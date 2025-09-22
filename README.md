@@ -103,7 +103,7 @@ BioShield revoluciona la protección científica con **seguros paramétricos aut
 ### 🟣 **Solana Devnet**
 <div align="center">
 
-| Contrato/Token | Dirección | Explorer | Estado |
+| Contrato | Dirección | Explorer | Estado |
 |:---:|:---:|:---:|:---:|
 | **🛡️ BioShield Insurance** | `4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW` | [🔍 Ver](https://explorer.solana.com/address/4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW?cluster=devnet) | ✅ Activo |
 | **🪙 Lives Token** | `DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz` | [🔍 Ver](https://explorer.solana.com/address/DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz?cluster=devnet) | ✅ Activo |

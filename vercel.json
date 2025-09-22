@@ -6,6 +6,7 @@
   "outputDirectory": ".next",
   "env": {
     "NEXT_PUBLIC_SOLANA_RPC": "https://api.devnet.solana.com",
+    "NEXT_PUBLIC_PROGRAM_ID": "4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW",
     "NEXT_PUBLIC_BASE_RPC": "https://sepolia.base.org",
     "NEXT_PUBLIC_OPTIMISM_RPC": "https://sepolia.optimism.io",
     "NEXT_PUBLIC_BASE_BIOSHIELD": "0x5C0F9F645E82cFB26918369Feb1189211511250e",

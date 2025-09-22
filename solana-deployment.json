@@ -1,11 +1,13 @@
 {
   "network": "solana-devnet",
   "chainId": "devnet",
-  "timestamp": "2025-09-22T05:23:46.131Z",
+  "timestamp": "2025-09-22T05:42:15.018Z",
   "deployer": "3S8EEWxgFTpoAPip78CBanP7xjNuUQK5Yb3Ezin4pFxF",
   "contracts": {
-    "BioShieldInsurance": "4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW"
+    "BioShieldInsurance": "4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW",
+    "LivesToken": "DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz",
+    "ShieldToken": "6ESbK51EppXAvQu5GtyWd9m7jqForjPm8F4fGQrLyKqP"
   },
-  "explorer": "https://explorer.solana.com/address/4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW?cluster=devnet",
-  "status": "simulated"
+  "explorer": "https://explorer.solana.com",
+  "status": "deployed"
 }
