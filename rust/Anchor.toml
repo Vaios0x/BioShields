@@ -3,13 +3,13 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-bioshield_insurance = "3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w"
+bioshield_insurance = "4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW"
 
 [programs.devnet]
-bioshield_insurance = "3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w"
+bioshield_insurance = "4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW"
 
 [programs.mainnet]
-bioshield_insurance = "3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w"
+bioshield_insurance = "4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW"
 
 [registry]
 url = "https://api.apr.dev"

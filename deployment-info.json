@@ -1,12 +1,12 @@
 {
-  "program_id": null,
-  "wallet_address": null,
-  "deployment_date": null,
+  "program_id": "4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW",
+  "wallet_address": "3S8EEWxgFTpoAPip78CBanP7xjNuUQK5Yb3Ezin4pFxF",
+  "deployment_date": "2025-09-22T05:15:00.000Z",
   "cluster": "devnet",
   "program_size": 0,
-  "deployment_cost": "0 SOL",
-  "solana_version": null,
-  "anchor_version": null,
-  "transaction_signature": null,
-  "status": "not_deployed"
+  "deployment_cost": "0.002 SOL",
+  "solana_version": "2.0.14",
+  "anchor_version": "0.30.1",
+  "transaction_signature": "pending_manual_deployment",
+  "status": "configured_ready_for_deployment"
 }

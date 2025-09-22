@@ -4,7 +4,7 @@ use anchor_spl::associated_token::AssociatedToken;
 use solana_program::clock::Clock;
 use std::mem::size_of;
 
-declare_id!("3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w");
+declare_id!("4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW");
 
 pub mod state;
 pub mod instructions;
