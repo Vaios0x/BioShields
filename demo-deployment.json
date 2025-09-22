@@ -1,0 +1,37 @@
+{
+  "timestamp": "2025-09-22T06:34:28.595Z",
+  "mode": "demo",
+  "networks": {
+    "solana": {
+      "network": "devnet",
+      "programId": "3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w",
+      "rpc": "https://api.devnet.solana.com"
+    },
+    "ethereum": {
+      "network": "base-sepolia",
+      "contract": "0x1234567890123456789012345678901234567890",
+      "rpc": "https://sepolia.base.org"
+    },
+    "optimism": {
+      "network": "optimism-sepolia",
+      "contract": "0x1234567890123456789012345678901234567890",
+      "rpc": "https://sepolia.optimism.io"
+    }
+  },
+  "features": {
+    "mockData": true,
+    "realTransactions": false,
+    "oracleIntegration": false,
+    "crossChain": false,
+    "aiRiskAssessment": true,
+    "premiumCalculator": true
+  },
+  "demo": {
+    "enabled": true,
+    "scenarios": [
+      "clinical_trial_failure",
+      "funding_milestone_achievement",
+      "ip_application_approval"
+    ]
+  }
+}

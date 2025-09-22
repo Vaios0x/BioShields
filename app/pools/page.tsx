@@ -29,69 +29,81 @@ import { formatCurrency, formatNumber } from '@/lib/utils'
 const mockPools = [
   {
     id: 'clinical-pool',
-    name: 'Clinical Trials Pool',
-    description: 'Pool de liquidez para seguros de ensayos clínicos',
-    totalLiquidity: 1200000,
-    apy: 15.2,
+    name: 'Clinical Trials Pool (Próspera Enhanced)',
+    description: 'Pool de liquidez para seguros de ensayos clínicos con IA y Próspera Fast-Track',
+    totalLiquidity: 6200000,
+    apy: 18.5,
     riskLevel: 'medium',
-    activePolicies: 45,
-    totalClaims: 8,
+    activePolicies: 156,
+    totalClaims: 23,
     stakedAmount: 0,
     rewards: 0,
     tokenSymbol: 'SHIELD',
-    color: 'from-primary to-secondary'
+    color: 'from-primary to-secondary',
+    prosperaAdvantage: '70% más rápido',
+    aiEnhanced: true,
+    network: 'Solana'
   },
   {
     id: 'funding-pool',
-    name: 'Research Funding Pool',
-    description: 'Pool de liquidez para seguros de financiación',
-    totalLiquidity: 800000,
-    apy: 12.8,
+    name: 'Research Funding Pool (IA Enhanced)',
+    description: 'Pool de liquidez para seguros de financiación con IA predictiva',
+    totalLiquidity: 2800000,
+    apy: 15.2,
     riskLevel: 'low',
     activePolicies: 32,
     totalClaims: 3,
     stakedAmount: 0,
     rewards: 0,
     tokenSymbol: 'SHIELD',
-    color: 'from-secondary to-accent'
+    color: 'from-secondary to-accent',
+    network: 'Base Sepolia'
   },
   {
     id: 'ip-pool',
-    name: 'IP Protection Pool',
-    description: 'Pool de liquidez para protección de propiedad intelectual',
-    totalLiquidity: 2000000,
-    apy: 18.5,
+    name: 'IP Protection Pool (IA Enhanced)',
+    description: 'Pool de liquidez para protección de propiedad intelectual con IA',
+    totalLiquidity: 1200000,
+    apy: 22.1,
     riskLevel: 'high',
     activePolicies: 28,
     totalClaims: 12,
     stakedAmount: 0,
     rewards: 0,
     tokenSymbol: 'SHIELD',
-    color: 'from-accent to-primary'
+    color: 'from-accent to-primary',
+    aiEnhanced: true,
+    network: 'Optimism Sepolia'
   },
   {
     id: 'regulatory-pool',
-    name: 'Regulatory Approval Pool',
-    description: 'Pool de liquidez para aprobaciones regulatorias',
-    totalLiquidity: 1500000,
-    apy: 22.1,
+    name: 'Regulatory Approval Pool (Próspera)',
+    description: 'Pool de liquidez para aprobaciones regulatorias con Próspera Fast-Track',
+    totalLiquidity: 2000000,
+    apy: 25.3,
     riskLevel: 'high',
     activePolicies: 18,
     totalClaims: 5,
     stakedAmount: 0,
     rewards: 0,
     tokenSymbol: 'SHIELD',
-    color: 'from-danger to-accent'
+    color: 'from-danger to-accent',
+    prosperaAdvantage: '70% más rápido',
+    nftIncluded: true,
+    network: 'Solana'
   }
 ]
 
 const mockStats = {
-  totalTVL: 5500000,
+  totalTVL: 10240000,
   totalStakers: 1247,
-  averageApy: 17.15,
-  totalRewards: 125000,
-  protocolRevenue: 180000,
-  shieldTokenPrice: 0.85
+  averageApy: 20.3,
+  totalRewards: 285000,
+  protocolRevenue: 480000,
+  shieldTokenPrice: 0.85,
+  prosperaAdvantage: '70%',
+  aiEnhanced: true,
+  hackathonWins: 2
 }
 
 export default function PoolsPage() {

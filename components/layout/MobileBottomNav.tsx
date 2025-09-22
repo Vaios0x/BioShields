@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Home, Shield, FileText, TrendingUp, Users } from 'lucide-react'
+import { Home, Shield, FileText, TrendingUp, Users, Activity, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const mobileNavItems = [
@@ -10,6 +10,8 @@ const mobileNavItems = [
   { name: 'Dashboard', href: '/dashboard', icon: Shield },
   { name: 'Marketplace', href: '/marketplace', icon: FileText },
   { name: 'Pools', href: '/pools', icon: TrendingUp },
+  { name: 'Predicciones', href: '/prediction', icon: Activity },
+  { name: 'NFTs', href: '/nft', icon: Star },
   { name: 'Gobernanza', href: '/governance', icon: Users },
 ]
 

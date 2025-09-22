@@ -22,8 +22,10 @@ import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 // import { LivesTokenBalance, ShieldTokenBalance } from '@/components/web3/TokenBalance'
 import { ConnectionStatus } from '@/components/web3/ConnectionStatus'
 import { LoadingCard } from '@/components/ui/LoadingCard'
+import { OnChainDemo } from '@/components/demo/OnChainDemo'
 import { formatCurrency } from '@/lib/utils'
 import { useInsurance } from '@/hooks/useInsurance'
+import { isDemoMode } from '@/lib/config/demo-config'
 import Link from 'next/link'
 
 // Mock data - en producción vendría de hooks/APIs
@@ -31,26 +33,30 @@ const mockPolicies = [
   {
     id: 'BS-001',
     type: 'clinical_trial',
-    name: 'Ensayo Clínico Fase II - Cáncer',
-    coverageAmount: 500000,
-    premium: 25000,
+    name: 'Ensayo Clínico Fase II - Cáncer (Próspera)',
+    coverageAmount: 5000000,
+    premium: 125000,
     status: 'active',
     startDate: new Date('2024-01-15'),
     endDate: new Date('2024-12-15'),
-    healthScore: 85,
+    healthScore: 92,
     riskLevel: 'medium',
+    aiRiskScore: 78,
+    prosperaFastTrack: true,
+    network: 'Solana',
   },
   {
     id: 'BS-002',
     type: 'research_funding',
-    name: 'Proyecto de Investigación - Alzheimer',
-    coverageAmount: 1000000,
-    premium: 50000,
+    name: 'Proyecto de Investigación - Alzheimer (IA Enhanced)',
+    coverageAmount: 2000000,
+    premium: 80000,
     status: 'active',
     startDate: new Date('2024-02-01'),
     endDate: new Date('2025-02-01'),
     healthScore: 92,
     riskLevel: 'low',
+    network: 'Base Sepolia',
   },
   {
     id: 'BS-003',
@@ -63,6 +69,7 @@ const mockPolicies = [
     endDate: new Date('2024-11-01'),
     healthScore: 45,
     riskLevel: 'high',
+    network: 'Optimism Sepolia',
   },
 ]
 
@@ -81,12 +88,15 @@ const mockClaims = [
 const mockStats = {
   totalPolicies: 3,
   activePolicies: 2,
-  totalCoverage: 3500000,
-  totalPremiums: 155000,
+  totalCoverage: 9000000,
+  totalPremiums: 285000,
   totalClaims: 1,
   totalPayouts: 2000000,
-  healthScore: 85,
-  riskExposure: 65,
+  healthScore: 92,
+  riskExposure: 45,
+  aiRiskScore: 78,
+  prosperaAdvantage: '70%',
+  livesDiscount: 50,
 }
 
 export default function DashboardPage() {
@@ -162,6 +172,13 @@ export default function DashboardPage() {
           <div className="mb-6">
             <ConnectionStatus />
           </div>
+
+          {/* On-Chain Demo */}
+          {isDemoMode() && (
+            <div className="mb-8">
+              <OnChainDemo />
+            </div>
+          )}
 
           {/* Token Balances - Removed to avoid balance loading errors */}
           {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

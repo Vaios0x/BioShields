@@ -30,23 +30,28 @@ const mockClaims = [
   {
     id: 'CL-001',
     policyId: 'BS-003',
-    policyName: 'Patente - Terapia Genética',
-    amount: 2000000,
+    policyName: 'Patente - Terapia Genética (IA Enhanced)',
+    amount: 3000000,
     status: 'paid',
     submittedAt: new Date('2024-01-20T10:30:00'),
-    processedAt: new Date('2024-01-22T14:15:00'),
+    processedAt: new Date('2024-01-20T10:35:00'),
     payoutTx: '0x1234567890abcdef1234567890abcdef12345678',
     evidence: [
       'https://ipfs.io/ipfs/QmEvidence1',
-      'https://ipfs.io/ipfs/QmEvidence2'
+      'https://ipfs.io/ipfs/QmEvidence2',
+      'https://ipfs.io/ipfs/QmAI_Analysis'
     ],
     oracleData: {
-      source: 'USPTO',
+      source: 'USPTO + AI Analysis',
       timestamp: new Date('2024-01-20T09:00:00'),
       value: 'REJECTED',
       verified: true,
-      confidence: 0.95
-    }
+      confidence: 0.98,
+      aiRiskScore: 85
+    },
+    prosperaFastTrack: true,
+    processingTime: '5 minutos',
+    network: 'Optimism Sepolia'
   },
   {
     id: 'CL-002',

@@ -2,21 +2,123 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAccount } from 'wagmi'
+import { usePublicClient, useWalletClient, useWriteContract, useReadContract } from 'wagmi'
+import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { BioShieldProgram } from '@/lib/solana/bioshield-program'
-import { BioShieldContractService } from '@/lib/ethereum/bioshield-contracts'
 import { InsurancePolicy, Claim, TriggerConditions } from '@/types'
+import { Connection, PublicKey } from '@solana/web3.js'
+import { ethers } from 'ethers'
 import toast from 'react-hot-toast'
+
+// Contract addresses and ABI
+const BIOSHIELD_ADDRESS = process.env.NEXT_PUBLIC_BIOSHIELD_CONTRACT || '0x...'
+const BIOSHIELD_ABI = [
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "coverageAmount", "type": "uint256" },
+      { "internalType": "uint256", "name": "premium", "type": "uint256" },
+      { "internalType": "string", "name": "triggerConditions", "type": "string" }
+    ],
+    "name": "createPolicy",
+    "outputs": [{ "internalType": "uint256", "name": "policyId", "type": "uint256" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "user", "type": "address" }],
+    "name": "getUserPolicies",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "uint256", "name": "id", "type": "uint256" },
+          { "internalType": "uint256", "name": "coverageAmount", "type": "uint256" },
+          { "internalType": "uint256", "name": "premium", "type": "uint256" },
+          { "internalType": "uint256", "name": "startDate", "type": "uint256" },
+          { "internalType": "uint256", "name": "endDate", "type": "uint256" },
+          { "internalType": "uint8", "name": "status", "type": "uint8" }
+        ],
+        "internalType": "struct BioShield.Policy",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "policyId", "type": "uint256" },
+      { "internalType": "string", "name": "evidence", "type": "string" }
+    ],
+    "name": "submitClaim",
+    "outputs": [{ "internalType": "uint256", "name": "claimId", "type": "uint256" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPoolStats",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "uint256", "name": "totalLiquidity", "type": "uint256" },
+          { "internalType": "uint256", "name": "activePolicies", "type": "uint256" },
+          { "internalType": "uint256", "name": "totalClaims", "type": "uint256" },
+          { "internalType": "uint256", "name": "averageApy", "type": "uint256" }
+        ],
+        "internalType": "struct BioShield.PoolStats",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+] as const
 
 export function useInsurance() {
   const [policies, setPolicies] = useState<InsurancePolicy[]>([])
   const [claims, setClaims] = useState<Claim[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentNetwork, setCurrentNetwork] = useState<'solana' | 'ethereum'>('ethereum')
   
-  const { address: ethAddress, isConnected } = useAccount()
+  // Ethereum hooks
+  const { address: ethAddress, isConnected: ethConnected, chain } = useAccount()
+  const publicClient = usePublicClient()
+  const { data: walletClient } = useWalletClient()
+  const { writeContractAsync: writeContract } = useWriteContract()
+  
+  // Contract read hooks
+  const { data: userPolicies } = useReadContract({
+    address: BIOSHIELD_ADDRESS as `0x${string}`,
+    abi: BIOSHIELD_ABI,
+    functionName: 'getUserPolicies',
+    args: ethAddress ? [ethAddress] : undefined,
+    query: { enabled: !!ethAddress }
+  })
+  
+  const { data: poolStats } = useReadContract({
+    address: BIOSHIELD_ADDRESS as `0x${string}`,
+    abi: BIOSHIELD_ABI,
+    functionName: 'getPoolStats'
+  })
+  
+  // Solana hooks
+  const { connection: solanaConnection } = useConnection()
+  const { publicKey: solanaAddress, connected: solanaConnected } = useWallet()
+
+  // Detect current network
+  useEffect(() => {
+    if (solanaConnected && solanaAddress) {
+      setCurrentNetwork('solana')
+    } else if (ethConnected && ethAddress) {
+      setCurrentNetwork('ethereum')
+    }
+  }, [solanaConnected, solanaAddress, ethConnected, ethAddress])
 
   const fetchPolicies = useCallback(async () => {
-    if (!isConnected && !ethAddress) {
+    if (!ethConnected && !solanaConnected) {
       // Show mock data when no wallet is connected
       const mockPolicies: InsurancePolicy[] = [
         {
@@ -59,12 +161,53 @@ export function useInsurance() {
     setError(null)
 
     try {
-      if (ethAddress) {
-        // Fetch from Ethereum/Base
-        // Mock implementation - en producción sería una llamada real
+      if (currentNetwork === 'ethereum' && ethAddress && userPolicies) {
+        // Use data from wagmi hooks
+        const mappedPolicies: InsurancePolicy[] = userPolicies.map((policy: any) => ({
+          id: `ETH-${policy.id}`,
+          type: 'clinical_trial', // Default type
+          coverageAmount: Number(policy.coverageAmount),
+          premium: Number(policy.premium),
+          startDate: new Date(Number(policy.startDate) * 1000),
+          endDate: new Date(Number(policy.endDate) * 1000),
+          status: policy.status === 0 ? 'active' : policy.status === 1 ? 'expired' : 'cancelled',
+          triggerConditions: {
+            clinicalTrialId: 'NCT12345678',
+            dataSource: 'clinicaltrials.gov'
+          },
+          createdAt: new Date(Number(policy.startDate) * 1000),
+          updatedAt: new Date()
+        }))
+        
+        setPolicies(mappedPolicies)
+      } else if (currentNetwork === 'solana' && solanaAddress && solanaConnection) {
+        // Fetch from Solana using real program
+        const solanaProgram = new BioShieldProgram(solanaConnection, { publicKey: solanaAddress } as any)
+        const result = await solanaProgram.getActivePolicies(solanaAddress.toString())
+        
+        if (result.success) {
+          const mappedPolicies: InsurancePolicy[] = result.policies.map((policy) => ({
+            id: `SOL-${policy.id}`,
+            type: 'clinical_trial', // Default type
+            coverageAmount: policy.coverageAmount,
+            premium: policy.premium,
+            startDate: policy.startDate,
+            endDate: policy.endDate,
+            status: policy.status,
+            triggerConditions: policy.triggerConditions,
+            createdAt: policy.startDate,
+            updatedAt: new Date()
+          }))
+          
+          setPolicies(mappedPolicies)
+        } else {
+          throw new Error(result.error || 'Failed to fetch Solana policies')
+        }
+      } else {
+        // Fallback to mock data
         const mockPolicies: InsurancePolicy[] = [
           {
-            id: 'BS-ETH-001',
+            id: 'BS-DEMO-001',
             type: 'clinical_trial',
             coverageAmount: 500000,
             premium: 25000,
@@ -81,65 +224,42 @@ export function useInsurance() {
         ]
         setPolicies(mockPolicies)
       }
-    } catch (error) {
-      console.error('Error fetching policies:', error)
-      setError('Failed to fetch policies')
-      toast.error('Failed to fetch policies')
-    } finally {
-      setLoading(false)
-    }
-  }, [isConnected, ethAddress])
-
-  const createCoverage = async (params: {
-    type: InsurancePolicy['type']
-    coverageAmount: number
-    premium: number
-    triggerConditions: TriggerConditions
-    payWithLives: boolean
-  }) => {
-    if (!isConnected && !ethAddress) {
-      toast.error('Please connect your wallet')
-      return { success: false, error: 'Wallet not connected' }
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      if (ethAddress) {
-        // Create on Ethereum/Base
-        // Mock implementation
-        const newPolicy: InsurancePolicy = {
-          id: `BS-ETH-${Date.now()}`,
-          type: params.type,
-          coverageAmount: params.coverageAmount,
-          premium: params.payWithLives ? params.premium * 0.5 : params.premium,
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+    } catch (err) {
+      console.error('Error fetching policies:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch policies')
+      
+      // Fallback to mock data on error
+      const mockPolicies: InsurancePolicy[] = [
+        {
+          id: 'BS-DEMO-001',
+          type: 'clinical_trial',
+          coverageAmount: 500000,
+          premium: 25000,
+          startDate: new Date('2024-01-15'),
+          endDate: new Date('2024-12-15'),
           status: 'active',
-          triggerConditions: params.triggerConditions,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          triggerConditions: {
+            clinicalTrialId: 'NCT12345678',
+            dataSource: 'clinicaltrials.gov'
+          },
+          createdAt: new Date('2024-01-15'),
+          updatedAt: new Date('2024-01-15')
         }
-
-        setPolicies(prev => [...prev, newPolicy])
-        toast.success('Coverage created successfully')
-        return { success: true, policyId: newPolicy.id }
-      }
-    } catch (error) {
-      console.error('Error creating coverage:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      setError(errorMessage)
-      toast.error(errorMessage)
-      return { success: false, error: errorMessage }
+      ]
+      setPolicies(mockPolicies)
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentNetwork, ethAddress, ethConnected, solanaAddress, solanaConnected, userPolicies, solanaConnection])
 
-  const submitClaim = async (policyId: string, evidence: any) => {
-    if (!isConnected && !ethAddress) {
-      toast.error('Please connect your wallet')
+  const createPolicy = useCallback(async (
+    coverageAmount: number,
+    premium: number,
+    triggerConditions: TriggerConditions,
+    payWithLives: boolean = false
+  ) => {
+    if (!ethConnected && !solanaConnected) {
+      toast.error('Please connect your wallet first')
       return { success: false, error: 'Wallet not connected' }
     }
 
@@ -147,71 +267,165 @@ export function useInsurance() {
     setError(null)
 
     try {
-      if (ethAddress) {
-        // Submit on Ethereum/Base
-        // Mock implementation
-        const newClaim: Claim = {
-          id: `CL-${Date.now()}`,
-          policyId,
-          amount: 0, // Will be calculated based on policy
-          status: 'pending',
-          evidence: [evidence],
-          submittedAt: new Date()
-        }
+      let result
 
-        setClaims(prev => [...prev, newClaim])
-        toast.success('Claim submitted successfully')
-        return { success: true, claimId: newClaim.id }
+      if (currentNetwork === 'ethereum' && writeContract) {
+        // Create policy on Ethereum/Base using wagmi
+        const txHash = await writeContract({
+          address: BIOSHIELD_ADDRESS as `0x${string}`,
+          abi: BIOSHIELD_ABI,
+          functionName: 'createPolicy',
+          args: [
+            BigInt(coverageAmount),
+            BigInt(premium),
+            JSON.stringify(triggerConditions)
+          ]
+        })
+        
+        result = {
+          success: true,
+          tx: txHash,
+          policyId: 'pending'
+        }
+      } else if (currentNetwork === 'solana' && solanaConnection && solanaAddress) {
+        // Create policy on Solana
+        const solanaProgram = new BioShieldProgram(solanaConnection, { publicKey: solanaAddress } as any)
+        result = await solanaProgram.createCoverage(
+          coverageAmount,
+          premium,
+          triggerConditions,
+          payWithLives
+        )
+      } else {
+        throw new Error('Invalid network configuration')
       }
-    } catch (error) {
-      console.error('Error submitting claim:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+      if (result.success) {
+        toast.success('Policy created successfully!')
+        await fetchPolicies() // Refresh policies
+        return result
+      } else {
+        throw new Error(result.error || 'Failed to create policy')
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create policy'
+      console.error('Error creating policy:', err)
       setError(errorMessage)
       toast.error(errorMessage)
       return { success: false, error: errorMessage }
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentNetwork, ethConnected, solanaConnected, writeContract, solanaConnection, solanaAddress, fetchPolicies])
 
-  const getPolicyById = (id: string) => {
-    return policies.find(policy => policy.id === id)
-  }
-
-  const getClaimsByPolicy = (policyId: string) => {
-    return claims.filter(claim => claim.policyId === policyId)
-  }
-
-  const getActivePolicies = () => {
-    return policies.filter(policy => policy.status === 'active')
-  }
-
-  const getExpiredPolicies = () => {
-    return policies.filter(policy => policy.status === 'expired')
-  }
-
-  const getClaimedPolicies = () => {
-    return policies.filter(policy => policy.status === 'claimed')
-  }
-
-  useEffect(() => {
-    if (isConnected || ethAddress) {
-      fetchPolicies()
+  const submitClaim = useCallback(async (
+    policyId: string,
+    evidence: any
+  ) => {
+    if (!ethConnected && !solanaConnected) {
+      toast.error('Please connect your wallet first')
+      return { success: false, error: 'Wallet not connected' }
     }
-  }, [isConnected, ethAddress, fetchPolicies])
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      let result
+
+      if (currentNetwork === 'ethereum' && writeContract) {
+        // Submit claim on Ethereum/Base using wagmi
+        const policyIdNumber = parseInt(policyId.replace('ETH-', ''))
+        const txHash = await writeContract({
+          address: BIOSHIELD_ADDRESS as `0x${string}`,
+          abi: BIOSHIELD_ABI,
+          functionName: 'submitClaim',
+          args: [BigInt(policyIdNumber), JSON.stringify(evidence)]
+        })
+        
+        result = {
+          success: true,
+          tx: txHash,
+          claimId: 'pending'
+        }
+      } else if (currentNetwork === 'solana' && solanaConnection && solanaAddress) {
+        // Submit claim on Solana
+        const solanaProgram = new BioShieldProgram(solanaConnection, { publicKey: solanaAddress } as any)
+        result = await solanaProgram.processClaim(policyId, evidence)
+      } else {
+        throw new Error('Invalid network configuration')
+      }
+
+      if (result.success) {
+        toast.success('Claim submitted successfully!')
+        return result
+      } else {
+        throw new Error(result.error || 'Failed to submit claim')
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to submit claim'
+      console.error('Error submitting claim:', err)
+      setError(errorMessage)
+      toast.error(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [currentNetwork, ethConnected, solanaConnected, writeContract, solanaConnection, solanaAddress])
+
+  const getPoolStats = useCallback(async () => {
+    try {
+      if (currentNetwork === 'ethereum' && poolStats) {
+        // Use data from wagmi hooks
+        return {
+          success: true,
+          stats: {
+            totalLiquidity: Number(poolStats.totalLiquidity),
+            activePolicies: Number(poolStats.activePolicies),
+            totalClaims: Number(poolStats.totalClaims),
+            averageApy: Number(poolStats.averageApy) / 100 // Convert from basis points
+          }
+        }
+      } else if (currentNetwork === 'solana' && solanaConnection && solanaAddress) {
+        const solanaProgram = new BioShieldProgram(solanaConnection, { publicKey: solanaAddress } as any)
+        return await solanaProgram.getPoolStats()
+      } else {
+        // Return mock stats
+        return {
+          success: true,
+          stats: {
+            totalLiquidity: 2400000,
+            activePolicies: 156,
+            totalClaims: 23,
+            averageApy: 12.5
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching pool stats:', err)
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to fetch pool stats'
+      }
+    }
+  }, [currentNetwork, poolStats, solanaConnection, solanaAddress])
+
+  // Load policies on mount and when network changes
+  useEffect(() => {
+    fetchPolicies()
+  }, [fetchPolicies])
 
   return {
     policies,
     claims,
     loading,
     error,
-    createCoverage,
+    currentNetwork,
+    createPolicy,
     submitClaim,
-    getPolicyById,
-    getClaimsByPolicy,
-    getActivePolicies,
-    getExpiredPolicies,
-    getClaimedPolicies,
-    refetch: fetchPolicies,
+    getPoolStats,
+    fetchPolicies,
+    isConnected: ethConnected || solanaConnected,
+    currentAddress: ethAddress || solanaAddress?.toString()
   }
 }

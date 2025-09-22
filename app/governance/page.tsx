@@ -29,8 +29,8 @@ import { formatCurrency, formatDateTime, formatNumber } from '@/lib/utils'
 const mockProposals = [
   {
     id: 'PROP-001',
-    title: 'Aumentar el APY del Clinical Trials Pool al 18%',
-    description: 'Propuesta para incrementar el APY del pool de ensayos clínicos del 15.2% al 18% para atraer más liquidez y mejorar la cobertura del sector.',
+    title: 'Aumentar el APY del Clinical Trials Pool (Solana) al 18.5%',
+    description: 'Propuesta para incrementar el APY del pool de ensayos clínicos en Solana del 15.2% al 18.5% para atraer más liquidez y mejorar la cobertura del sector.',
     type: 'protocol',
     status: 'active',
     votesFor: 1250000,
@@ -40,12 +40,13 @@ const mockProposals = [
     endDate: new Date('2024-01-22'),
     proposer: '0x1234...5678',
     executionTx: null,
-    category: 'treasury'
+    category: 'treasury',
+    network: 'Solana'
   },
   {
     id: 'PROP-002',
-    title: 'Integrar soporte para ensayos clínicos Fase I',
-    description: 'Extender la cobertura de seguros para incluir ensayos clínicos de Fase I, con primas ajustadas según el mayor riesgo.',
+    title: 'Integrar soporte para ensayos clínicos Fase I (Multi-chain)',
+    description: 'Extender la cobertura de seguros para incluir ensayos clínicos de Fase I en Solana, Base Sepolia y Optimism Sepolia, con primas ajustadas según el mayor riesgo.',
     type: 'protocol',
     status: 'passed',
     votesFor: 2100000,

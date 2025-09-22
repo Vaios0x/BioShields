@@ -12,7 +12,8 @@ import {
   Star,
   Calculator,
   Zap,
-  DollarSign
+  DollarSign,
+  Activity
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientButton } from '@/components/ui/GradientButton'
@@ -20,25 +21,34 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { PremiumCalculator } from '@/components/insurance/PremiumCalculator'
+import { AIRiskAssessment } from '@/components/insurance/AIRiskAssessment'
 import { formatCurrency, formatNumber } from '@/lib/utils'
+import { useWeb3Connection } from '@/hooks/useWeb3Connection'
+import { useTransactionService } from '@/hooks/useTransactionService'
+import { useInsurance } from '@/hooks/useInsurance'
+import { useLivesToken } from '@/hooks/useLivesToken'
+import toast from 'react-hot-toast'
 
 const insuranceProducts = [
   {
     id: 'clinical_trial',
     name: 'Seguro de Ensayos Clínicos',
-    description: 'Protección automática contra fallos en ensayos clínicos Fase II/III con verificación vía ClinicalTrials.gov',
-    coverage: 'Hasta $500K',
-    premium: 'Desde $2,500',
-    apy: '15.2%',
+    description: 'Protección automática contra fallos en ensayos clínicos Fase II/III con verificación vía ClinicalTrials.gov y IA avanzada',
+    coverage: 'Hasta $5M',
+    premium: 'Desde $12,500',
+    apy: '18.5%',
     icon: '🧬',
     category: 'clinical',
     riskLevel: 'medium',
     features: [
       'Verificación automática vía ClinicalTrials.gov',
+      'IA Risk Assessment con GPT-4',
       'Pago instantáneo al cumplirse condiciones',
       'Cobertura global para ensayos Fase II/III',
       'Sin documentación manual requerida',
-      'Descuento 50% con $LIVES token'
+      'Descuento 50% con $LIVES token',
+      'Próspera Fast-Track disponible',
+      'Multi-chain: Solana, Base Sepolia, Optimism Sepolia'
     ],
     requirements: [
       'Protocolo de ensayo registrado en ClinicalTrials.gov',
@@ -54,19 +64,22 @@ const insuranceProducts = [
   {
     id: 'research_funding',
     name: 'Seguro de Financiación',
-    description: 'Protección contra pérdida de financiación en proyectos de investigación con monitoreo de milestones',
-    coverage: 'Hasta $1M',
-    premium: 'Desde $5,000',
-    apy: '12.8%',
+    description: 'Protección contra pérdida de financiación en proyectos de investigación con monitoreo de milestones y IA predictiva',
+    coverage: 'Hasta $2M',
+    premium: 'Desde $8,000',
+    apy: '15.2%',
     icon: '💰',
     category: 'funding',
     riskLevel: 'low',
     features: [
       'Monitoreo automático de milestones',
+      'IA predictiva para riesgo de financiación',
       'Pago en 24 horas tras verificación',
       'Cobertura extendida por 12 meses',
       'Soporte para múltiples fuentes de financiación',
-      'Descuento 50% con $LIVES token'
+      'Descuento 50% con $LIVES token',
+      'Próspera Fast-Track disponible',
+      'Multi-chain: Solana, Base Sepolia, Optimism Sepolia'
     ],
     requirements: [
       'Contrato de financiación firmado',
@@ -82,19 +95,21 @@ const insuranceProducts = [
   {
     id: 'ip_protection',
     name: 'Protección de IP',
-    description: 'Seguro contra disputas de propiedad intelectual y patentes con verificación USPTO',
-    coverage: 'Hasta $2M',
-    premium: 'Desde $8,000',
-    apy: '18.5%',
+    description: 'Seguro contra disputas de propiedad intelectual y patentes con verificación USPTO y análisis de IA',
+    coverage: 'Hasta $3M',
+    premium: 'Desde $15,000',
+    apy: '22.1%',
     icon: '⚖️',
     category: 'ip',
     riskLevel: 'high',
     features: [
       'Verificación automática USPTO',
+      'IA para análisis de riesgo de disputas',
       'Defensa legal incluida hasta $500K',
       'Cobertura mundial para patentes',
       'Monitoreo de infracciones 24/7',
-      'Descuento 50% con $LIVES token'
+      'Descuento 50% con $LIVES token',
+      'Multi-chain: Solana, Base Sepolia, Optimism Sepolia'
     ],
     requirements: [
       'Aplicación de patente presentada',
@@ -110,19 +125,22 @@ const insuranceProducts = [
   {
     id: 'regulatory_approval',
     name: 'Aprobación Regulatoria',
-    description: 'Protección contra rechazos regulatorios FDA/EMA con monitoreo automático',
-    coverage: 'Hasta $3M',
-    premium: 'Desde $12,000',
-    apy: '22.1%',
+    description: 'Protección contra rechazos regulatorios FDA/EMA con monitoreo automático y Próspera Fast-Track',
+    coverage: 'Hasta $5M',
+    premium: 'Desde $20,000',
+    apy: '25.3%',
     icon: '🏛️',
     category: 'regulatory',
     riskLevel: 'high',
     features: [
       'Monitoreo automático FDA/EMA',
+      'Próspera Fast-Track NFT incluido',
       'Pago automático tras rechazo oficial',
       'Cobertura completa de costos regulatorios',
       'Soporte para múltiples jurisdicciones',
-      'Descuento 50% con $LIVES token'
+      'Descuento 50% con $LIVES token',
+      '70% más rápido que FDA tradicional',
+      'Multi-chain: Solana, Base Sepolia, Optimism Sepolia'
     ],
     requirements: [
       'Aplicación regulatoria presentada',
@@ -140,7 +158,7 @@ const insuranceProducts = [
 const filters = {
   category: ['all', 'clinical', 'funding', 'ip', 'regulatory'],
   riskLevel: ['all', 'low', 'medium', 'high'],
-  coverage: ['all', 'under-500k', '500k-1m', '1m-2m', 'over-2m'],
+  coverage: ['all', 'under-1m', '1m-2m', '2m-3m', '3m-5m', 'over-5m'],
 }
 
 export default function MarketplacePage() {
@@ -151,12 +169,66 @@ export default function MarketplacePage() {
     coverage: 'all',
   })
   const [showCalculator, setShowCalculator] = useState(false)
+  const [showAIRisk, setShowAIRisk] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+
+  // Web3 connections
+  const { 
+    isConnected, 
+    currentNetwork, 
+    address, 
+    connectWallet,
+    getNetworkDisplayName,
+    getAddressDisplay 
+  } = useWeb3Connection()
+  
+  const transactionService = useTransactionService()
+  const { createPolicy, loading: insuranceLoading } = useInsurance()
+  const { balance: livesBalance, calculateDiscount, hasEnoughBalance } = useLivesToken()
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  const handlePurchaseInsurance = async (product: any) => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet first')
+      await connectWallet()
+      return
+    }
+
+    if (!transactionService) {
+      toast.error('Transaction service not available')
+      return
+    }
+
+    try {
+      const coverageAmount = parseFloat(product.coverage.replace(/[^\d.]/g, ''))
+      const premium = parseFloat(product.premium.replace(/[^\d.]/g, ''))
+      
+      const triggerConditions = {
+        clinicalTrialId: 'NCT12345678', // Mock ID
+        dataSource: 'clinicaltrials.gov' as const
+      }
+
+      const result = await createPolicy(
+        coverageAmount,
+        premium,
+        triggerConditions,
+        false // payWithLives - could be made configurable
+      )
+
+      if (result.success) {
+        toast.success('Insurance policy created successfully!')
+      } else {
+        toast.error(result.error || 'Failed to create policy')
+      }
+    } catch (error) {
+      console.error('Error purchasing insurance:', error)
+      toast.error('Failed to purchase insurance')
+    }
+  }
 
   if (!mounted) {
     return null
@@ -224,6 +296,64 @@ export default function MarketplacePage() {
               Protege tu investigación con seguros paramétricos descentralizados. 
               Verificación automática, pagos instantáneos, descuentos con $LIVES.
             </p>
+          </div>
+
+          {/* Connection Status */}
+          {isConnected && (
+            <div className="mb-6">
+              <GlassCard className="p-4 bg-gradient-to-r from-success/10 to-primary/10 border border-success/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-success/20 rounded-full flex items-center justify-center">
+                      <CheckCircle className="w-4 h-4 text-success" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-success">
+                        Wallet Conectado
+                      </div>
+                      <div className="text-xs text-text-secondary">
+                        {getNetworkDisplayName(currentNetwork)} • {getAddressDisplay(address)}
+                      </div>
+                    </div>
+                  </div>
+                  {livesBalance > 0 && (
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-accent">
+                        {formatNumber(livesBalance)} $LIVES
+                      </div>
+                      <div className="text-xs text-text-secondary">
+                        50% descuento disponible
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            </div>
+          )}
+
+          {/* AI Risk Assessment Banner */}
+          <div className="mb-8">
+            <GlassCard className="p-6 bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
+                    <Activity className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-text-primary">
+                      AI Risk Assessment
+                    </h3>
+                    <p className="text-text-secondary text-sm">
+                      Analiza tu protocolo con GPT-4 y obtén primas optimizadas
+                    </p>
+                  </div>
+                </div>
+                <GradientButton onClick={() => setShowAIRisk(true)}>
+                  <Activity className="w-4 h-4 mr-2" />
+                  Analizar con IA
+                </GradientButton>
+              </div>
+            </GlassCard>
           </div>
 
           {/* Search and Filters */}
@@ -360,13 +490,11 @@ export default function MarketplacePage() {
                       <GradientButton 
                         fullWidth 
                         variant="secondary"
-                        onClick={() => {
-                          // Navigate to product details
-                          window.location.href = `/marketplace/${product.id}`
-                        }}
+                        onClick={() => handlePurchaseInsurance(product)}
+                        disabled={insuranceLoading}
                       >
                         <Shield className="w-4 h-4 mr-2" />
-                        Ver Detalles
+                        {insuranceLoading ? 'Procesando...' : 'Comprar Seguro'}
                       </GradientButton>
                     </div>
 
@@ -411,6 +539,22 @@ export default function MarketplacePage() {
                 setShowCalculator(false)
                 setSelectedProduct(null)
               }}
+            />
+          </motion.div>
+        </div>
+      )}
+
+      {/* AI Risk Assessment Modal */}
+      {showAIRisk && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+          >
+            <AIRiskAssessment
+              onClose={() => setShowAIRisk(false)}
             />
           </motion.div>
         </div>

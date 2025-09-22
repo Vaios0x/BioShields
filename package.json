@@ -28,7 +28,11 @@
     "solana:test": "cd rust && anchor test --provider.cluster devnet",
     "solana:clean": "cd rust && anchor clean",
     "oracle:health": "node -e \"require('./lib/oracles/chainlink-config.ts').checkOracleHealth().then(console.log)\"",
-    "oracle:test": "node -e \"console.log('Testing oracle integration...')\""
+    "oracle:test": "node -e \"console.log('Testing oracle integration...')\"",
+    "demo:build": "NEXT_PUBLIC_DEMO_MODE=true npm run build",
+    "demo:start": "NEXT_PUBLIC_DEMO_MODE=true npm run start",
+    "demo:dev": "NEXT_PUBLIC_DEMO_MODE=true npm run dev",
+    "demo:deploy": "npm run demo:build && vercel --prod"
   },
   "dependencies": {
     "@chainlink/contracts": "^1.4.0",

@@ -17,6 +17,8 @@ const navigation = [
   { name: 'Marketplace', href: '/marketplace' },
   { name: 'Claims', href: '/claims' },
   { name: 'Pools', href: '/pools' },
+  { name: 'Predicciones', href: '/prediction' },
+  { name: 'NFTs', href: '/nft' },
   { name: 'Gobernanza', href: '/governance' },
 ]
 
