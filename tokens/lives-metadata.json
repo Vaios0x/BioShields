@@ -1,0 +1,27 @@
+{
+  "name": "BioShield Lives Token",
+  "symbol": "LIVES",
+  "description": "Utility token for BioShield Insurance platform with 50% premium discount",
+  "image": "https://bioshield.insurance/tokens/lives.png",
+  "decimals": 9,
+  "mint": "DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz",
+  "supply": "1000000000000000000",
+  "attributes": [
+    {
+      "trait_type": "Utility",
+      "value": "Premium Discount"
+    },
+    {
+      "trait_type": "Discount",
+      "value": "50%"
+    },
+    {
+      "trait_type": "Network",
+      "value": "Solana"
+    },
+    {
+      "trait_type": "Platform",
+      "value": "BioShield Insurance"
+    }
+  ]
+}

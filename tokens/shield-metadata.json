@@ -1,0 +1,31 @@
+{
+  "name": "BioShield Shield Token",
+  "symbol": "SHIELD",
+  "description": "Governance and liquidity reward token for BioShield Insurance",
+  "image": "https://bioshield.insurance/tokens/shield.png",
+  "decimals": 9,
+  "mint": "6ESbK51EppXAvQu5GtyWd9m7jqForjPm8F4fGQrLyKqP",
+  "supply": "500000000000000000",
+  "attributes": [
+    {
+      "trait_type": "Utility",
+      "value": "Governance"
+    },
+    {
+      "trait_type": "Rewards",
+      "value": "Liquidity Provider"
+    },
+    {
+      "trait_type": "APY",
+      "value": "12.5%"
+    },
+    {
+      "trait_type": "Network",
+      "value": "Solana"
+    },
+    {
+      "trait_type": "Platform",
+      "value": "BioShield Insurance"
+    }
+  ]
+}

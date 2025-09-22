@@ -1,0 +1,63 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+bioshield_insurance = "3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w"
+
+[programs.devnet]
+bioshield_insurance = "3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w"
+
+[programs.mainnet]
+bioshield_insurance = "3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "devnet"
+wallet = "./wallet-keypair.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+# Oracle configuration
+[oracle]
+pyth_program = "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH"
+switchboard_program = "SW1TCH7qEPTdLsDHRgPuMQjbQxKdH2aBStViMFnt64f"
+
+# Bioscience oracle feeds
+[oracle.feeds]
+clinical_trials = "clinical_trials_feed_address"
+fda_approvals = "fda_approvals_feed_address"
+patent_status = "patent_status_feed_address"
+
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+upgrade_authority_path = "~/.config/solana/id.json"
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+commitment = "processed"
+ledger = ".anchor/test-ledger"
+bind_address = "0.0.0.0"
+rpc_port = 8899
+websocket_port = 8900
+startup_wait = 5000
+shutdown_wait = 2000
+
+[[test.validator.clone]]
+address = "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH"
+
+[[test.validator.clone]]
+address = "SW1TCH7qEPTdLsDHRgPuMQjbQxKdH2aBStViMFnt64f"
+
+# Account configurations for testing
+[[test.validator.account]]
+address = "11111111111111111111111111111112"
+filename = "accounts/system_program.json"
+
+[[test.validator.account]]
+address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+filename = "accounts/spl_token.json"

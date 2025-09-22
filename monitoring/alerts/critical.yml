@@ -1,0 +1,384 @@
+# ============================================================================
+# BioShield Insurance - Critical Alert Rules
+# ============================================================================
+
+groups:
+  # ==========================================
+  # APPLICATION HEALTH
+  # ==========================================
+  - name: application.critical
+    interval: 30s
+    rules:
+      - alert: APIDown
+        expr: up{job="bioshield-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+          team: platform
+        annotations:
+          summary: "BioShield API is down"
+          description: "The BioShield API has been down for more than 2 minutes."
+          runbook_url: "https://runbooks.bioshield.insurance/api-down"
+          dashboard_url: "https://grafana.bioshield.insurance/d/api-overview"
+
+      - alert: FrontendDown
+        expr: up{job="bioshield-frontend"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          service: frontend
+          team: platform
+        annotations:
+          summary: "BioShield Frontend is down"
+          description: "The BioShield frontend has been down for more than 3 minutes."
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{job="bioshield-api",status=~"5.."}[5m]) /
+            rate(http_requests_total{job="bioshield-api"}[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: api
+          team: platform
+        annotations:
+          summary: "High API error rate"
+          description: "API error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{job="bioshield-api"}[5m])
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+          team: platform
+        annotations:
+          summary: "Slow API response times"
+          description: "95th percentile response time is {{ $value }}s over the last 10 minutes."
+
+  # ==========================================
+  # BLOCKCHAIN MONITORING
+  # ==========================================
+  - name: blockchain.critical
+    interval: 60s
+    rules:
+      - alert: BlockchainRPCDown
+        expr: up{job=~".*-rpc"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          service: blockchain
+          team: blockchain
+        annotations:
+          summary: "Blockchain RPC endpoint is down"
+          description: "{{ $labels.job }} RPC endpoint has been down for more than 5 minutes."
+
+      - alert: HighGasPrices
+        expr: |
+          avg_over_time(gas_price_gwei{chain="base"}[1h]) > 50
+        for: 30m
+        labels:
+          severity: warning
+          service: blockchain
+          team: blockchain
+        annotations:
+          summary: "High gas prices on Base network"
+          description: "Gas prices have been above 50 gwei for 30 minutes: {{ $value }} gwei"
+
+      - alert: ContractCallFailures
+        expr: |
+          rate(contract_call_failures_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          service: blockchain
+          team: blockchain
+        annotations:
+          summary: "High rate of smart contract call failures"
+          description: "Contract call failure rate is {{ $value }} failures/second"
+
+      - alert: OracleVerificationFailure
+        expr: |
+          rate(oracle_verification_failures_total[5m]) > 0.01
+        for: 10m
+        labels:
+          severity: critical
+          service: oracle
+          team: blockchain
+        annotations:
+          summary: "Oracle verification failures detected"
+          description: "Oracle verification failure rate: {{ $value }} failures/second"
+
+      - alert: LowPoolLiquidity
+        expr: |
+          pool_utilization_ratio > 0.9
+        for: 15m
+        labels:
+          severity: critical
+          service: insurance
+          team: defi
+        annotations:
+          summary: "Insurance pool liquidity critically low"
+          description: "Pool utilization at {{ $value | humanizePercentage }}. Immediate attention required."
+
+  # ==========================================
+  # INFRASTRUCTURE
+  # ==========================================
+  - name: infrastructure.critical
+    interval: 30s
+    rules:
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 15m
+        labels:
+          severity: warning
+          service: infrastructure
+          team: platform
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is above 80% for 15 minutes: {{ $value }}%"
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 10m
+        labels:
+          severity: critical
+          service: infrastructure
+          team: platform
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is above 90%: {{ $value }}%"
+
+      - alert: DiskSpaceLow
+        expr: |
+          (1 - (node_filesystem_avail_bytes / node_filesystem_size_bytes)) * 100 > 85
+        for: 15m
+        labels:
+          severity: warning
+          service: infrastructure
+          team: platform
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is above 85% on {{ $labels.device }}: {{ $value }}%"
+
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: kubernetes
+          team: platform
+        annotations:
+          summary: "Pod is crash looping"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is restarting frequently"
+
+  # ==========================================
+  # DATABASE HEALTH
+  # ==========================================
+  - name: database.critical
+    interval: 30s
+    rules:
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: database
+          team: platform
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL has been down for more than 2 minutes."
+
+      - alert: HighDatabaseConnections
+        expr: |
+          pg_stat_activity_count / pg_settings_max_connections > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: database
+          team: platform
+        annotations:
+          summary: "High database connection usage"
+          description: "Database connection usage is above 80%: {{ $value | humanizePercentage }}"
+
+      - alert: SlowQueries
+        expr: |
+          pg_stat_statements_mean_time_ms > 1000
+        for: 15m
+        labels:
+          severity: warning
+          service: database
+          team: platform
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query time is {{ $value }}ms"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 3m
+        labels:
+          severity: critical
+          service: cache
+          team: platform
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 3 minutes."
+
+  # ==========================================
+  # BUSINESS METRICS
+  # ==========================================
+  - name: business.critical
+    interval: 60s
+    rules:
+      - alert: HighClaimVolume
+        expr: |
+          increase(claims_submitted_total[1h]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: insurance
+          team: business
+        annotations:
+          summary: "Unusually high claim submission volume"
+          description: "{{ $value }} claims submitted in the last hour"
+
+      - alert: AbnormalPremiumCalculation
+        expr: |
+          rate(premium_calculation_errors_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: insurance
+          team: business
+        annotations:
+          summary: "Premium calculation errors detected"
+          description: "Premium calculation error rate: {{ $value }} errors/second"
+
+      - alert: ClaimProcessingDelay
+        expr: |
+          histogram_quantile(0.95,
+            rate(claim_processing_duration_seconds_bucket[1h])
+          ) > 86400  # 24 hours
+        for: 30m
+        labels:
+          severity: warning
+          service: insurance
+          team: business
+        annotations:
+          summary: "Claims taking too long to process"
+          description: "95th percentile claim processing time: {{ $value | humanizeDuration }}"
+
+      - alert: LargeClaim
+        expr: |
+          claim_amount_usd > 1000000  # $1M
+        for: 0m
+        labels:
+          severity: warning
+          service: insurance
+          team: business
+        annotations:
+          summary: "Large claim submitted"
+          description: "Claim for ${{ $value }} submitted - requires manual review"
+
+  # ==========================================
+  # SECURITY ALERTS
+  # ==========================================
+  - name: security.critical
+    interval: 30s
+    rules:
+      - alert: SuspiciousActivity
+        expr: |
+          rate(failed_authentication_attempts_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: security
+          team: security
+        annotations:
+          summary: "High rate of failed authentication attempts"
+          description: "{{ $value }} failed authentication attempts per second"
+
+      - alert: UnauthorizedAccess
+        expr: |
+          rate(http_requests_total{status="403"}[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: security
+          team: security
+        annotations:
+          summary: "High rate of unauthorized access attempts"
+          description: "{{ $value }} unauthorized access attempts per second"
+
+      - alert: TLSCertificateExpiry
+        expr: |
+          (probe_ssl_earliest_cert_expiry - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          service: security
+          team: platform
+        annotations:
+          summary: "TLS certificate expiring soon"
+          description: "Certificate for {{ $labels.instance }} expires in {{ $value }} days"
+
+      - alert: ContractPaused
+        expr: |
+          contract_paused{contract="bioshield_insurance"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          service: blockchain
+          team: security
+        annotations:
+          summary: "BioShield Insurance contract is paused"
+          description: "The main insurance contract has been paused - all operations are halted"
+
+  # ==========================================
+  # EXTERNAL DEPENDENCIES
+  # ==========================================
+  - name: external.critical
+    interval: 60s
+    rules:
+      - alert: IPFSNodeDown
+        expr: up{job="ipfs"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: storage
+          team: platform
+        annotations:
+          summary: "IPFS node is down"
+          description: "IPFS node has been down for more than 5 minutes"
+
+      - alert: ChainlinkNodeDown
+        expr: up{job="chainlink"} == 0
+        for: 10m
+        labels:
+          severity: critical
+          service: oracle
+          team: blockchain
+        annotations:
+          summary: "Chainlink node is down"
+          description: "Chainlink oracle node has been down for more than 10 minutes"
+
+      - alert: ExternalAPIFailure
+        expr: |
+          probe_success{job="blackbox"} == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: external
+          team: platform
+        annotations:
+          summary: "External service unavailable"
+          description: "{{ $labels.instance }} has been unavailable for 5 minutes"

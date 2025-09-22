@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-09-15T21:04:08.519Z",
+  "executionTime": 14621,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 1,
+    "skipped": 0,
+    "successRate": 100
+  },
+  "details": [
+    {
+      "step": 1,
+      "name": "Deploy Tokens",
+      "script": "./scripts/deploy-tokens.js",
+      "status": "passed",
+      "duration": 10888,
+      "timestamp": "2025-09-15T21:04:04.786Z",
+      "output": null
+    },
+    {
+      "step": 2,
+      "name": "Run End-to-End Tests",
+      "script": "./tests/end-to-end.test.js",
+      "status": "failed",
+      "duration": 3702,
+      "timestamp": "2025-09-15T21:04:08.511Z",
+      "error": "Command failed: node ./tests/end-to-end.test.js"
+    }
+  ]
+}

@@ -1,0 +1,239 @@
+# ============================================================================
+# BioShield Insurance - Prometheus Configuration
+# ============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'bioshield-production'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts/*.yml"
+  - "recording_rules/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # ==========================================
+  # APPLICATION METRICS
+  # ==========================================
+
+  # BioShield API Backend
+  - job_name: 'bioshield-api'
+    static_configs:
+      - targets: ['bioshield-backend:4000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: bioshield-backend:4000
+
+  # Frontend Metrics (if enabled)
+  - job_name: 'bioshield-frontend'
+    static_configs:
+      - targets: ['bioshield-frontend:3000']
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s
+
+  # ==========================================
+  # BLOCKCHAIN METRICS
+  # ==========================================
+
+  # Custom blockchain exporter
+  - job_name: 'blockchain-metrics'
+    static_configs:
+      - targets: ['blockchain-exporter:9090']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    params:
+      chains: ['solana', 'base']
+
+  # Solana RPC metrics
+  - job_name: 'solana-rpc'
+    static_configs:
+      - targets: ['solana-rpc-exporter:9091']
+    scrape_interval: 30s
+
+  # Base/Ethereum RPC metrics
+  - job_name: 'base-rpc'
+    static_configs:
+      - targets: ['base-rpc-exporter:9092']
+    scrape_interval: 30s
+
+  # ==========================================
+  # INFRASTRUCTURE METRICS
+  # ==========================================
+
+  # Node Exporter (system metrics)
+  - job_name: 'node-exporter'
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.*):10250'
+        target_label: __address__
+        replacement: '${1}:9100'
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+
+  # cAdvisor (container metrics)
+  - job_name: 'cadvisor'
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.*):10250'
+        target_label: __address__
+        replacement: '${1}:4194'
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+
+  # Kubernetes API Server
+  - job_name: 'kubernetes-apiservers'
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names:
+            - default
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+
+  # ==========================================
+  # DATABASE METRICS
+  # ==========================================
+
+  # PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # ==========================================
+  # EXTERNAL SERVICES
+  # ==========================================
+
+  # IPFS Node
+  - job_name: 'ipfs'
+    static_configs:
+      - targets: ['ipfs-exporter:5001']
+    metrics_path: '/debug/metrics/prometheus'
+    scrape_interval: 60s
+
+  # Chainlink Node (if self-hosted)
+  - job_name: 'chainlink'
+    static_configs:
+      - targets: ['chainlink-node:6688']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    basic_auth:
+      username: 'prometheus'
+      password: 'monitoring_password'
+
+  # ==========================================
+  # BUSINESS METRICS
+  # ==========================================
+
+  # Custom business metrics exporter
+  - job_name: 'business-metrics'
+    static_configs:
+      - targets: ['business-metrics-exporter:8080']
+    scrape_interval: 60s
+    metrics_path: '/metrics'
+
+  # ==========================================
+  # SYNTHETIC MONITORING
+  # ==========================================
+
+  # Blackbox exporter for uptime monitoring
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - https://app.bioshield.insurance
+        - https://api.bioshield.insurance/health
+        - https://docs.bioshield.insurance
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # SSL certificate expiry monitoring
+  - job_name: 'ssl-expiry'
+    metrics_path: /probe
+    params:
+      module: [tls_connect]
+    static_configs:
+      - targets:
+        - bioshield.insurance:443
+        - app.bioshield.insurance:443
+        - api.bioshield.insurance:443
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # ==========================================
+  # SECURITY MONITORING
+  # ==========================================
+
+  # Falco security events
+  - job_name: 'falco'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [falco]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+
+# Remote write configuration (optional - for long-term storage)
+remote_write:
+  - url: "https://prometheus-remote-write.monitoring.svc.cluster.local/api/v1/write"
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 10
+      capacity: 10000
+
+# Storage configuration
+storage:
+  tsdb:
+    retention.time: 30d
+    retention.size: 50GB
+    wal-compression: true

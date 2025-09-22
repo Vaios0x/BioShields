@@ -1,0 +1,14 @@
+﻿{
+    "shieldTokenMint":  "JbUJsgwUShOgejP/wcjlOtwGOzmHcOKzxHI2IBxOSXs=",
+    "maxCoverageAmount":  100000,
+    "totalClaimsPaid":  0,
+    "totalCoverageAmount":  0,
+    "createdAt":  "2025-09-15T10:05:36Z",
+    "poolAddress":  "f4JazRkQP7HGuvbF2EDPBIEPqTpUrLBLa0/+bncxqwo=",
+    "isPaused":  false,
+    "programId":  "SPMWcPi+ivf2CIIEZlulRdRfkaGDyOcoKVcvlViKas8=",
+    "poolFeeBasisPoints":  250,
+    "totalValueLocked":  0,
+    "livesTokenMint":  "n9EAqOSVPtZ52LkUIKS5CbXc+TgJsFjFBVBEyZ/YY/k=",
+    "minCoverageAmount":  1000
+}

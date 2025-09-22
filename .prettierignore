@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+dist
+*.log
+.env*
+.DS_Store
+*.tsbuildinfo
+coverage
+.nyc_output
+.vscode
+.idea
+*.swp
+*.swo
+*~

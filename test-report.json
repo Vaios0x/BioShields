@@ -1,0 +1,71 @@
+{
+  "timestamp": "2025-09-15T21:04:08.480Z",
+  "summary": {
+    "total": 10,
+    "passed": 3,
+    "failed": 7,
+    "successRate": 30
+  },
+  "details": [
+    {
+      "category": "Program Deployment",
+      "test": "Program is not executable",
+      "passed": false,
+      "timestamp": "2025-09-15T21:04:08.029Z"
+    },
+    {
+      "category": "Token Deployment",
+      "test": "$LIVES token exists with supply",
+      "passed": true,
+      "timestamp": "2025-09-15T21:04:08.245Z"
+    },
+    {
+      "category": "Token Deployment",
+      "test": "$SHIELD token exists with supply",
+      "passed": true,
+      "timestamp": "2025-09-15T21:04:08.458Z"
+    },
+    {
+      "category": "Token Deployment",
+      "test": "Token decimals are correct",
+      "passed": true,
+      "timestamp": "2025-09-15T21:04:08.458Z"
+    },
+    {
+      "category": "Oracle Integration",
+      "test": "Unexpected token 'export'",
+      "passed": false,
+      "timestamp": "2025-09-15T21:04:08.464Z"
+    },
+    {
+      "category": "Insurance Flow",
+      "test": "Unexpected identifier 'as'",
+      "passed": false,
+      "timestamp": "2025-09-15T21:04:08.467Z"
+    },
+    {
+      "category": "Claims Processing",
+      "test": "Unexpected strict mode reserved word",
+      "passed": false,
+      "timestamp": "2025-09-15T21:04:08.469Z"
+    },
+    {
+      "category": "Liquidity Management",
+      "test": "Unexpected token ':'",
+      "passed": false,
+      "timestamp": "2025-09-15T21:04:08.473Z"
+    },
+    {
+      "category": "Governance",
+      "test": "Unexpected token ':'",
+      "passed": false,
+      "timestamp": "2025-09-15T21:04:08.475Z"
+    },
+    {
+      "category": "Frontend Integration",
+      "test": "Unexpected token '<'",
+      "passed": false,
+      "timestamp": "2025-09-15T21:04:08.477Z"
+    }
+  ]
+}

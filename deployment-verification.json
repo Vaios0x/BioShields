@@ -1,0 +1,8 @@
+{
+  "verified": false,
+  "timestamp": "2025-09-15T21:02:51.133Z",
+  "program_id": null,
+  "deployment_successful": false,
+  "status": "executable_fix_failed",
+  "error": "ENOENT: no such file or directory, open 'C:\\Daaps\\BioShields\\rust\\target\\deploy\\bioshield_insurance.so'"
+}

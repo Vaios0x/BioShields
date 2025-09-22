@@ -1,0 +1,384 @@
+use anchor_lang::prelude::*;
+use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint, MintTo};
+use anchor_spl::associated_token::AssociatedToken;
+use solana_program::clock::Clock;
+use std::mem::size_of;
+
+declare_id!("");
+
+pub mod state;
+pub mod instructions;
+pub mod errors;
+pub mod utils;
+pub mod oracles;
+
+use state::*;
+use instructions::*;
+use errors::InsuranceError;
+
+#[program]
+pub mod bioshield_insurance {
+    use super::*;
+
+    /// Initialize the main insurance pool
+    pub fn initialize_pool(
+        ctx: Context<InitializePool>,
+        pool_params: PoolParams,
+    ) -> Result<()> {
+        let pool = &mut ctx.accounts.insurance_pool;
+        let clock = Clock::get()?;
+        
+        pool.authority = ctx.accounts.authority.key();
+        pool.lives_token_mint = ctx.accounts.lives_token_mint.key();
+        pool.shield_token_mint = ctx.accounts.shield_token_mint.key();
+        pool.total_value_locked = 0;
+        pool.total_coverage_amount = 0;
+        pool.total_claims_paid = 0;
+        pool.pool_fee_basis_points = pool_params.fee_basis_points;
+        pool.min_coverage_amount = pool_params.min_coverage_amount;
+        pool.max_coverage_amount = pool_params.max_coverage_amount;
+        pool.oracle_address = pool_params.oracle_address;
+        pool.created_at = clock.unix_timestamp;
+        pool.is_paused = false;
+        pool.bump = ctx.bumps.insurance_pool;
+
+        emit!(PoolInitialized {
+            pool: pool.key(),
+            authority: pool.authority,
+            timestamp: clock.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
+    /// Create a new insurance coverage
+    pub fn create_coverage(
+        ctx: Context<CreateCoverage>,
+        coverage_params: CoverageParams,
+    ) -> Result<()> {
+        let coverage = &mut ctx.accounts.coverage_account;
+        let pool = &ctx.accounts.insurance_pool;
+        let clock = Clock::get()?;
+
+        // Validate coverage parameters
+        require!(
+            coverage_params.coverage_amount >= pool.min_coverage_amount &&
+            coverage_params.coverage_amount <= pool.max_coverage_amount,
+            InsuranceError::InvalidCoverageAmount
+        );
+
+        // Calculate premium with LIVES token discount
+        let base_premium = utils::calculations::calculate_premium(
+            coverage_params.coverage_amount,
+            coverage_params.coverage_period,
+            coverage_params.risk_category,
+        )?;
+
+        let final_premium = if ctx.accounts.lives_token_account.is_some() {
+            // 50% discount when paying with LIVES token
+            base_premium.checked_div(2).unwrap()
+        } else {
+            base_premium
+        };
+
+        // Transfer premium to pool
+        if let Some(lives_account) = &ctx.accounts.lives_token_account {
+            // Transfer LIVES tokens
+            let cpi_accounts = Transfer {
+                from: lives_account.to_account_info(),
+                to: ctx.accounts.pool_lives_account.to_account_info(),
+                authority: ctx.accounts.insured.to_account_info(),
+            };
+            let cpi_program = ctx.accounts.token_program.to_account_info();
+            let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+            token::transfer(cpi_ctx, final_premium)?;
+        } else {
+            // Transfer SOL
+            let ix = anchor_lang::solana_program::system_instruction::transfer(
+                &ctx.accounts.insured.key(),
+                &pool.key(),
+                final_premium,
+            );
+            anchor_lang::solana_program::program::invoke(
+                &ix,
+                &[
+                    ctx.accounts.insured.to_account_info(),
+                    ctx.accounts.insurance_pool.to_account_info(),
+                ],
+            )?;
+        }
+
+        // Initialize coverage account
+        coverage.insured = ctx.accounts.insured.key();
+        coverage.pool = pool.key();
+        coverage.coverage_amount = coverage_params.coverage_amount;
+        coverage.premium_paid = final_premium;
+        coverage.coverage_type = coverage_params.coverage_type;
+        coverage.trigger_conditions = coverage_params.trigger_conditions;
+        coverage.start_time = clock.unix_timestamp;
+        coverage.end_time = clock.unix_timestamp + coverage_params.coverage_period as i64;
+        coverage.status = CoverageStatus::Active;
+        coverage.claims_made = 0;
+        coverage.total_claimed = 0;
+        coverage.metadata_uri = coverage_params.metadata_uri;
+        coverage.bump = ctx.bumps.coverage_account;
+
+        // Update pool statistics
+        let pool = &mut ctx.accounts.insurance_pool;
+        pool.total_coverage_amount = pool.total_coverage_amount
+            .checked_add(coverage_params.coverage_amount)
+            .unwrap();
+        pool.total_value_locked = pool.total_value_locked
+            .checked_add(final_premium)
+            .unwrap();
+
+        emit!(CoverageCreated {
+            coverage: coverage.key(),
+            insured: coverage.insured,
+            amount: coverage.coverage_amount,
+            premium: final_premium,
+            coverage_type: coverage.coverage_type.clone(),
+            timestamp: clock.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
+    /// Submit a claim for coverage
+    pub fn submit_claim(
+        ctx: Context<SubmitClaim>,
+        claim_data: ClaimData,
+    ) -> Result<()> {
+        let claim = &mut ctx.accounts.claim_account;
+        let coverage = &ctx.accounts.coverage_account;
+        let clock = Clock::get()?;
+
+        // Validate coverage is active
+        require!(
+            coverage.status == CoverageStatus::Active,
+            InsuranceError::CoverageNotActive
+        );
+
+        require!(
+            clock.unix_timestamp <= coverage.end_time,
+            InsuranceError::CoverageExpired
+        );
+
+        // Initialize claim
+        claim.coverage = coverage.key();
+        claim.claimant = ctx.accounts.claimant.key();
+        claim.claim_amount = claim_data.amount;
+        claim.claim_type = claim_data.claim_type;
+        claim.evidence_hash = claim_data.evidence_hash;
+        claim.oracle_request_id = None;
+        claim.status = ClaimStatus::Pending;
+        claim.submitted_at = clock.unix_timestamp;
+        claim.processed_at = None;
+        claim.processor = None;
+        claim.rejection_reason = None;
+        claim.bump = ctx.bumps.claim_account;
+
+        emit!(ClaimSubmitted {
+            claim: claim.key(),
+            coverage: coverage.key(),
+            claimant: claim.claimant,
+            amount: claim.claim_amount,
+            timestamp: clock.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
+    /// Process claim with oracle verification (Multi-Oracle Support)
+    pub fn process_claim_with_oracle(
+        ctx: Context<ProcessClaimWithOracle>,
+        oracle_data: oracles::MultiOracleData,
+    ) -> Result<()> {
+        let claim = &mut ctx.accounts.claim_account;
+        let coverage = &ctx.accounts.coverage_account;
+        let pool = &mut ctx.accounts.insurance_pool;
+        let clock = Clock::get()?;
+
+        // Verify oracle consensus (require at least 2 data sources)
+        require!(
+            oracle_data.has_consensus(2),
+            InsuranceError::InsufficientOracleConsensus
+        );
+
+        // Check if oracle confirms the trigger conditions
+        let should_payout = oracle_data.should_trigger_claim_payout(
+            &coverage.trigger_conditions
+        );
+
+        if should_payout {
+            // Calculate payout amount
+            let payout_amount = std::cmp::min(
+                claim.claim_amount,
+                coverage.coverage_amount - coverage.total_claimed
+            );
+
+            // Transfer payout from pool to claimant
+            let pool_seeds = &[
+                b"insurance_pool",
+                pool.authority.as_ref(),
+                &[pool.bump],
+            ];
+            let signer_seeds = &[&pool_seeds[..]];
+
+            if coverage.premium_paid > 0 {
+                // Transfer tokens
+                let cpi_accounts = Transfer {
+                    from: ctx.accounts.pool_token_account.to_account_info(),
+                    to: ctx.accounts.claimant_token_account.to_account_info(),
+                    authority: pool.to_account_info(),
+                };
+                let cpi_program = ctx.accounts.token_program.to_account_info();
+                let cpi_ctx = CpiContext::new_with_signer(
+                    cpi_program,
+                    cpi_accounts,
+                    signer_seeds
+                );
+                token::transfer(cpi_ctx, payout_amount)?;
+            }
+
+            // Update claim status
+            claim.status = ClaimStatus::Approved;
+            claim.processed_at = Some(clock.unix_timestamp);
+            claim.processor = Some(ctx.accounts.processor.key());
+
+            // Update coverage statistics
+            let coverage = &mut ctx.accounts.coverage_account;
+            coverage.claims_made += 1;
+            coverage.total_claimed = coverage.total_claimed
+                .checked_add(payout_amount)
+                .unwrap();
+
+            if coverage.total_claimed >= coverage.coverage_amount {
+                coverage.status = CoverageStatus::Exhausted;
+            }
+
+            // Update pool statistics
+            pool.total_claims_paid = pool.total_claims_paid
+                .checked_add(payout_amount)
+                .unwrap();
+
+            emit!(ClaimApproved {
+                claim: claim.key(),
+                payout_amount,
+                processor: ctx.accounts.processor.key(),
+                timestamp: clock.unix_timestamp,
+            });
+        } else {
+            claim.status = ClaimStatus::Rejected;
+            claim.processed_at = Some(clock.unix_timestamp);
+            claim.processor = Some(ctx.accounts.processor.key());
+            claim.rejection_reason = Some("Oracle verification failed".to_string());
+
+            emit!(ClaimRejected {
+                claim: claim.key(),
+                reason: claim.rejection_reason.clone(),
+                timestamp: clock.unix_timestamp,
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Add liquidity to insurance pool
+    pub fn add_liquidity(
+        ctx: Context<AddLiquidity>,
+        amount: u64,
+    ) -> Result<()> {
+        let pool = &mut ctx.accounts.insurance_pool;
+        let clock = Clock::get()?;
+
+        // Transfer tokens to pool
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.liquidity_provider_token.to_account_info(),
+            to: ctx.accounts.pool_token_account.to_account_info(),
+            authority: ctx.accounts.liquidity_provider.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        token::transfer(cpi_ctx, amount)?;
+
+        // Mint SHIELD tokens to liquidity provider
+        let shield_amount = utils::calculations::calculate_shield_tokens(
+            amount,
+            pool.total_value_locked,
+            ctx.accounts.shield_token_mint.supply,
+        )?;
+
+        let pool_seeds = &[
+            b"insurance_pool",
+            pool.authority.as_ref(),
+            &[pool.bump],
+        ];
+        let signer_seeds = &[&pool_seeds[..]];
+
+        let cpi_accounts = MintTo {
+            mint: ctx.accounts.shield_token_mint.to_account_info(),
+            to: ctx.accounts.provider_shield_account.to_account_info(),
+            authority: pool.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_ctx = CpiContext::new_with_signer(
+            cpi_program,
+            cpi_accounts,
+            signer_seeds
+        );
+        token::mint_to(cpi_ctx, shield_amount)?;
+
+        // Update pool TVL
+        pool.total_value_locked = pool.total_value_locked
+            .checked_add(amount)
+            .unwrap();
+
+        emit!(LiquidityAdded {
+            provider: ctx.accounts.liquidity_provider.key(),
+            amount,
+            shield_tokens_minted: shield_amount,
+            timestamp: clock.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
+    /// Emergency pause function
+    pub fn pause_pool(ctx: Context<PausePool>) -> Result<()> {
+        let pool = &mut ctx.accounts.insurance_pool;
+        require!(
+            ctx.accounts.authority.key() == pool.authority,
+            InsuranceError::Unauthorized
+        );
+        
+        pool.is_paused = true;
+        
+        emit!(PoolPaused {
+            pool: pool.key(),
+            authority: ctx.accounts.authority.key(),
+            timestamp: Clock::get()?.unix_timestamp,
+        });
+        
+        Ok(())
+    }
+
+    /// Unpause pool
+    pub fn unpause_pool(ctx: Context<PausePool>) -> Result<()> {
+        let pool = &mut ctx.accounts.insurance_pool;
+        require!(
+            ctx.accounts.authority.key() == pool.authority,
+            InsuranceError::Unauthorized
+        );
+        
+        pool.is_paused = false;
+        
+        emit!(PoolUnpaused {
+            pool: pool.key(),
+            authority: ctx.accounts.authority.key(),
+            timestamp: Clock::get()?.unix_timestamp,
+        });
+        
+        Ok(())
+    }
+}

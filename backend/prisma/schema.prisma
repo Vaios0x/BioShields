@@ -1,0 +1,537 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================
+// USER MANAGEMENT
+// =====================================
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  username          String?  @unique
+  walletAddress     String?  @unique
+  solanaAddress     String?  @unique
+  ethereumAddress   String?  @unique
+  baseAddress       String?  @unique
+  passwordHash      String?
+  isEmailVerified   Boolean  @default(false)
+  isWalletVerified  Boolean  @default(false)
+  profileImage      String?
+  bio               String?
+  organization      String?
+  researchField     String?
+  website           String?
+  twitter           String?
+  linkedin          String?
+  github            String?
+  role              UserRole @default(USER)
+  status            UserStatus @default(ACTIVE)
+  lastLoginAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  policies          InsurancePolicy[]
+  claims            Claim[]
+  liquidityPositions LiquidityPosition[]
+  governanceVotes   GovernanceVote[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+  ORACLE_OPERATOR
+  GOVERNANCE_MEMBER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_VERIFICATION
+}
+
+// =====================================
+// INSURANCE SYSTEM
+// =====================================
+
+model InsurancePolicy {
+  id                String   @id @default(cuid())
+  policyNumber      String   @unique
+  userId            String
+  type              PolicyType
+  coverageAmount    Decimal  @db.Decimal(18, 2)
+  premium           Decimal  @db.Decimal(18, 2)
+  premiumPaid       Decimal  @db.Decimal(18, 2) @default(0)
+  startDate         DateTime
+  endDate           DateTime
+  status            PolicyStatus @default(ACTIVE)
+  triggerConditions Json
+  metadata          Json?
+  onChainId         String?  @unique
+  onChainTx         String?
+  network           Network
+  paidWithLives     Boolean  @default(false)
+  livesDiscount     Decimal? @db.Decimal(5, 2)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  claims            Claim[]
+  oracleRequests    OracleRequest[]
+
+  @@map("insurance_policies")
+}
+
+enum PolicyType {
+  CLINICAL_TRIAL_FAILURE
+  REGULATORY_REJECTION
+  IP_INVALIDATION
+  RESEARCH_INFRASTRUCTURE
+  CUSTOM
+}
+
+enum PolicyStatus {
+  ACTIVE
+  EXPIRED
+  EXHAUSTED
+  CANCELLED
+  CLAIMED
+}
+
+enum Network {
+  SOLANA
+  ETHEREUM
+  BASE
+}
+
+// =====================================
+// CLAIMS SYSTEM
+// =====================================
+
+model Claim {
+  id                String   @id @default(cuid())
+  claimNumber       String   @unique
+  policyId          String
+  userId            String
+  amount            Decimal  @db.Decimal(18, 2)
+  status            ClaimStatus @default(PENDING)
+  evidence          Json
+  evidenceHash      String
+  oracleData        Json?
+  payoutAmount      Decimal? @db.Decimal(18, 2)
+  payoutTx          String?
+  rejectionReason   String?
+  processedAt       DateTime?
+  processedBy       String?
+  onChainId         String?  @unique
+  onChainTx         String?
+  network           Network
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  policy            InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oracleRequests    OracleRequest[]
+
+  @@map("claims")
+}
+
+enum ClaimStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PAID
+  EXPIRED
+}
+
+// =====================================
+// ORACLE SYSTEM
+// =====================================
+
+model OracleRequest {
+  id                String   @id @default(cuid())
+  requestId         String   @unique
+  policyId          String?
+  claimId           String?
+  type              OracleType
+  dataSource        String
+  parameters        Json
+  response          Json?
+  status            OracleStatus @default(PENDING)
+  confidence        Int?     @default(100)
+  cost              Decimal? @db.Decimal(18, 2)
+  chainlinkJobId    String?
+  chainlinkTx       String?
+  processedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  policy            InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  claim             Claim?   @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("oracle_requests")
+}
+
+enum OracleType {
+  CLINICAL_TRIAL_STATUS
+  REGULATORY_DECISION
+  IP_STATUS
+  FUNDING_MILESTONE
+  CUSTOM_VERIFICATION
+}
+
+enum OracleStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+// =====================================
+// LIQUIDITY SYSTEM
+// =====================================
+
+model LiquidityPool {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  description       String?
+  network           Network
+  tokenAddress      String
+  totalLiquidity    Decimal  @db.Decimal(18, 2) @default(0)
+  totalStaked       Decimal  @db.Decimal(18, 2) @default(0)
+  apy               Decimal  @db.Decimal(5, 2) @default(0)
+  riskLevel         RiskLevel @default(MEDIUM)
+  isActive          Boolean  @default(true)
+  minStakeAmount    Decimal  @db.Decimal(18, 2) @default(0)
+  maxStakeAmount    Decimal? @db.Decimal(18, 2)
+  lockPeriod        Int?     // in days
+  onChainId         String?  @unique
+  onChainTx         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  positions         LiquidityPosition[]
+  rewards           RewardDistribution[]
+
+  @@map("liquidity_pools")
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+model LiquidityPosition {
+  id                String   @id @default(cuid())
+  userId            String
+  poolId            String
+  amount            Decimal  @db.Decimal(18, 2)
+  shares            Decimal  @db.Decimal(18, 2)
+  apy               Decimal  @db.Decimal(5, 2)
+  startDate         DateTime
+  endDate           DateTime?
+  status            PositionStatus @default(ACTIVE)
+  rewardsEarned     Decimal  @db.Decimal(18, 2) @default(0)
+  rewardsClaimed    Decimal  @db.Decimal(18, 2) @default(0)
+  onChainId         String?  @unique
+  onChainTx         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pool              LiquidityPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@map("liquidity_positions")
+}
+
+enum PositionStatus {
+  ACTIVE
+  UNSTAKING
+  COMPLETED
+  CANCELLED
+}
+
+model RewardDistribution {
+  id                String   @id @default(cuid())
+  poolId            String
+  amount            Decimal  @db.Decimal(18, 2)
+  period            String   // e.g., "2024-01"
+  distributedAt     DateTime
+  onChainTx         String?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  pool              LiquidityPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@map("reward_distributions")
+}
+
+// =====================================
+// GOVERNANCE SYSTEM
+// =====================================
+
+model GovernanceProposal {
+  id                String   @id @default(cuid())
+  title             String
+  description       String
+  type              ProposalType
+  status            ProposalStatus @default(ACTIVE)
+  votesFor          Decimal  @db.Decimal(18, 2) @default(0)
+  votesAgainst      Decimal  @db.Decimal(18, 2) @default(0)
+  totalVotes        Decimal  @db.Decimal(18, 2) @default(0)
+  quorum            Decimal  @db.Decimal(5, 2) @default(50)
+  startDate         DateTime
+  endDate           DateTime
+  proposer          String
+  executionTx       String?
+  executedAt        DateTime?
+  metadata          Json?
+  onChainId         String?  @unique
+  onChainTx         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  votes             GovernanceVote[]
+
+  @@map("governance_proposals")
+}
+
+enum ProposalType {
+  TREASURY
+  PROTOCOL
+  GOVERNANCE
+  PARAMETER_CHANGE
+  EMERGENCY
+}
+
+enum ProposalStatus {
+  ACTIVE
+  PASSED
+  REJECTED
+  EXECUTED
+  EXPIRED
+  CANCELLED
+}
+
+model GovernanceVote {
+  id                String   @id @default(cuid())
+  proposalId        String
+  userId            String
+  vote              VoteType
+  amount            Decimal  @db.Decimal(18, 2)
+  reason            String?
+  onChainTx         String?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  proposal          GovernanceProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([proposalId, userId])
+  @@map("governance_votes")
+}
+
+enum VoteType {
+  FOR
+  AGAINST
+  ABSTAIN
+}
+
+// =====================================
+// BRIDGE SYSTEM
+// =====================================
+
+model BridgeTransaction {
+  id                String   @id @default(cuid())
+  userId            String
+  fromChain         Network
+  toChain           Network
+  token             String
+  amount            Decimal  @db.Decimal(18, 2)
+  status            BridgeStatus @default(PENDING)
+  sourceTx          String
+  destinationTx     String?
+  bridgeTx          String?
+  estimatedTime     Int?     // in minutes
+  completedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("bridge_transactions")
+}
+
+enum BridgeStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  EXPIRED
+}
+
+// =====================================
+// NOTIFICATION SYSTEM
+// =====================================
+
+model Notification {
+  id                String   @id @default(cuid())
+  userId            String
+  type              NotificationType
+  title             String
+  message           String
+  data              Json?
+  isRead            Boolean  @default(false)
+  actionUrl         String?
+  expiresAt         DateTime?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  POLICY_CREATED
+  POLICY_EXPIRED
+  CLAIM_SUBMITTED
+  CLAIM_APPROVED
+  CLAIM_REJECTED
+  PAYOUT_RECEIVED
+  GOVERNANCE_PROPOSAL
+  GOVERNANCE_VOTE
+  BRIDGE_COMPLETED
+  BRIDGE_FAILED
+  SYSTEM_MAINTENANCE
+  SECURITY_ALERT
+}
+
+// =====================================
+// AUDIT SYSTEM
+// =====================================
+
+model AuditLog {
+  id                String   @id @default(cuid())
+  userId            String?
+  action            String
+  resource          String
+  resourceId        String?
+  details           Json?
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime @default(now())
+
+  // Relations
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+// =====================================
+// SYSTEM CONFIGURATION
+// =====================================
+
+model SystemConfig {
+  id                String   @id @default(cuid())
+  key               String   @unique
+  value             String
+  description       String?
+  isPublic          Boolean  @default(false)
+  updatedBy         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+// =====================================
+// INDEXES
+// =====================================
+
+// User indexes
+@@index([User.email])
+@@index([User.walletAddress])
+@@index([User.solanaAddress])
+@@index([User.ethereumAddress])
+@@index([User.baseAddress])
+@@index([User.role])
+@@index([User.status])
+
+// Policy indexes
+@@index([InsurancePolicy.userId])
+@@index([InsurancePolicy.type])
+@@index([InsurancePolicy.status])
+@@index([InsurancePolicy.network])
+@@index([InsurancePolicy.onChainId])
+@@index([InsurancePolicy.startDate])
+@@index([InsurancePolicy.endDate])
+
+// Claim indexes
+@@index([Claim.policyId])
+@@index([Claim.userId])
+@@index([Claim.status])
+@@index([Claim.network])
+@@index([Claim.onChainId])
+@@index([Claim.createdAt])
+
+// Oracle indexes
+@@index([OracleRequest.requestId])
+@@index([OracleRequest.type])
+@@index([OracleRequest.status])
+@@index([OracleRequest.policyId])
+@@index([OracleRequest.claimId])
+
+// Liquidity indexes
+@@index([LiquidityPosition.userId])
+@@index([LiquidityPosition.poolId])
+@@index([LiquidityPosition.status])
+@@index([LiquidityPosition.startDate])
+
+// Governance indexes
+@@index([GovernanceProposal.status])
+@@index([GovernanceProposal.type])
+@@index([GovernanceProposal.startDate])
+@@index([GovernanceProposal.endDate])
+@@index([GovernanceProposal.proposer])
+
+// Bridge indexes
+@@index([BridgeTransaction.userId])
+@@index([BridgeTransaction.status])
+@@index([BridgeTransaction.fromChain])
+@@index([BridgeTransaction.toChain])
+
+// Notification indexes
+@@index([Notification.userId])
+@@index([Notification.type])
+@@index([Notification.isRead])
+@@index([Notification.createdAt])
+
+// Audit indexes
+@@index([AuditLog.userId])
+@@index([AuditLog.action])
+@@index([AuditLog.resource])
+@@index([AuditLog.createdAt])

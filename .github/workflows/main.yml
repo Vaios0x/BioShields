@@ -1,0 +1,549 @@
+name: BioShield CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+  SOLANA_VERSION: '1.17.0'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================================================
+  # SECURITY AUDITS
+  # ============================================================================
+  security-audit:
+    runs-on: ubuntu-latest
+    name: Security Audit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run Slither on Smart Contracts
+        uses: crytic/slither-action@v0.3.0
+        id: slither
+        with:
+          target: 'solidity/contracts/'
+          slither-args: '--filter-paths="node_modules|test" --exclude-informational'
+          fail-on: medium
+
+      - name: Upload Slither Report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: slither-report
+          path: slither-report.json
+
+      - name: Run Mythril Analysis
+        run: |
+          pip install mythril
+          myth analyze solidity/contracts/core/BioShieldInsurance.sol --solv 0.8.20
+
+      - name: CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          languages: javascript, typescript
+          queries: security-and-quality
+
+  # ============================================================================
+  # SMART CONTRACT TESTS
+  # ============================================================================
+  test-contracts:
+    runs-on: ubuntu-latest
+    name: Smart Contract Tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Hardhat Dependencies
+        working-directory: ./solidity
+        run: npm install
+
+      - name: Compile Contracts
+        working-directory: ./solidity
+        run: npx hardhat compile
+
+      - name: Run Contract Tests
+        working-directory: ./solidity
+        run: |
+          npx hardhat test
+          npx hardhat coverage
+
+      - name: Gas Report
+        working-directory: ./solidity
+        run: npx hardhat test --gas-report
+
+      - name: Upload Coverage Reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./solidity/coverage.json
+          flags: smart-contracts
+          name: smart-contracts-coverage
+
+      - name: Store Gas Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: gas-report
+          path: ./solidity/gas-report.txt
+
+  # ============================================================================
+  # BACKEND TESTS
+  # ============================================================================
+  test-backend:
+    runs-on: ubuntu-latest
+    name: Backend Tests
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_USER: testuser
+          POSTGRES_DB: bioshield_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/bioshield_test
+
+      - name: Run Database Migrations
+        working-directory: ./backend
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/bioshield_test
+
+      - name: Run Unit Tests
+        working-directory: ./backend
+        run: npm run test:cov
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/bioshield_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Run Integration Tests
+        working-directory: ./backend
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/bioshield_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Upload Backend Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage/clover.xml
+          flags: backend
+          name: backend-coverage
+
+  # ============================================================================
+  # FRONTEND TESTS
+  # ============================================================================
+  test-frontend:
+    runs-on: ubuntu-latest
+    name: Frontend Tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Type Check
+        run: npm run type-check
+
+      - name: Run Unit Tests
+        run: npm run test -- --coverage --watchAll=false
+
+      - name: Build Application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SOLANA_RPC: ${{ secrets.NEXT_PUBLIC_SOLANA_RPC }}
+          NEXT_PUBLIC_BASE_RPC: ${{ secrets.NEXT_PUBLIC_BASE_RPC }}
+
+      - name: Upload Frontend Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/clover.xml
+          flags: frontend
+          name: frontend-coverage
+
+  # ============================================================================
+  # E2E TESTS
+  # ============================================================================
+  test-e2e:
+    runs-on: ubuntu-latest
+    name: E2E Tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Build Application
+        run: npm run build
+
+      - name: Start Application
+        run: |
+          npm run start &
+          npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run E2E Tests
+        run: npx playwright test
+
+      - name: Upload E2E Test Results
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+
+  # ============================================================================
+  # PERFORMANCE TESTS
+  # ============================================================================
+  test-performance:
+    runs-on: ubuntu-latest
+    name: Performance Tests
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install K6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run Load Tests
+        run: k6 run tests/performance/load-test.js
+        env:
+          API_BASE_URL: http://localhost:4000
+
+      - name: Upload Performance Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: performance-results.json
+
+  # ============================================================================
+  # BUILD AND DEPLOY
+  # ============================================================================
+  build-and-push:
+    runs-on: ubuntu-latest
+    name: Build and Push Images
+    needs: [security-audit, test-contracts, test-backend, test-frontend]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.frontend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # ============================================================================
+  # DEPLOY TO STAGING
+  # ============================================================================
+  deploy-staging:
+    runs-on: ubuntu-latest
+    name: Deploy to Staging
+    needs: [build-and-push, test-e2e]
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name bioshield-staging --region us-east-1
+
+      - name: Deploy to Staging
+        run: |
+          # Update image tags in Kubernetes manifests
+          sed -i 's|IMAGE_TAG|${{ github.sha }}|g' k8s/staging/*.yaml
+
+          # Apply manifests
+          kubectl apply -f k8s/staging/
+
+      - name: Wait for deployment
+        run: |
+          kubectl rollout status deployment/bioshield-backend -n staging --timeout=300s
+          kubectl rollout status deployment/bioshield-frontend -n staging --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          STAGING_URL=$(kubectl get ingress bioshield-ingress -n staging -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          curl -f https://${STAGING_URL}/health || exit 1
+
+  # ============================================================================
+  # DEPLOY TO PRODUCTION
+  # ============================================================================
+  deploy-production:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: [build-and-push, test-e2e, test-performance]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: us-east-1
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name bioshield-production --region us-east-1
+
+      - name: Deploy Smart Contracts to Base Mainnet
+        run: |
+          cd solidity
+          npx hardhat run scripts/deploy.ts --network base
+        env:
+          PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+
+      - name: Verify Contracts on Basescan
+        run: |
+          cd solidity
+          npx hardhat verify --network base ${{ env.CONTRACT_ADDRESS }}
+
+      - name: Deploy to Production
+        run: |
+          # Blue-green deployment
+          sed -i 's|IMAGE_TAG|${{ github.sha }}|g' k8s/production/*.yaml
+
+          # Deploy to green environment first
+          kubectl apply -f k8s/production/ --selector=version=green
+
+          # Wait for green deployment
+          kubectl rollout status deployment/bioshield-backend-green -n production --timeout=600s
+          kubectl rollout status deployment/bioshield-frontend-green -n production --timeout=600s
+
+      - name: Run production smoke tests
+        run: |
+          # Test green environment
+          GREEN_URL=$(kubectl get service bioshield-frontend-green -n production -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          curl -f https://${GREEN_URL}/health || exit 1
+
+      - name: Switch traffic to green
+        run: |
+          # Update ingress to point to green
+          kubectl patch ingress bioshield-ingress -n production -p '{"spec":{"rules":[{"host":"app.bioshield.insurance","http":{"paths":[{"path":"/","pathType":"Prefix","backend":{"service":{"name":"bioshield-frontend-green","port":{"number":3000}}}}]}}]}}'
+
+      - name: Cleanup old blue deployment
+        run: |
+          sleep 300  # Wait 5 minutes before cleanup
+          kubectl delete deployment bioshield-backend-blue bioshield-frontend-blue -n production --ignore-not-found=true
+
+      - name: Update DNS and CDN
+        run: |
+          # Update Cloudflare DNS if needed
+          # Purge CDN cache
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
+
+  # ============================================================================
+  # NOTIFICATIONS
+  # ============================================================================
+  notify:
+    runs-on: ubuntu-latest
+    name: Send Notifications
+    needs: [deploy-production]
+    if: always()
+    steps:
+      - name: Notify Slack on Success
+        if: needs.deploy-production.result == 'success'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: |
+            ✅ BioShield Insurance deployed to production successfully!
+
+            📊 Deployment Details:
+            • Commit: ${{ github.sha }}
+            • Author: ${{ github.actor }}
+            • Branch: ${{ github.ref_name }}
+            • Contracts verified on Basescan
+            • All tests passed
+
+            🔗 Links:
+            • App: https://app.bioshield.insurance
+            • API: https://api.bioshield.insurance
+            • Docs: https://docs.bioshield.insurance
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify Slack on Failure
+        if: needs.deploy-production.result == 'failure'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: |
+            ❌ BioShield Insurance deployment failed!
+
+            Please check the workflow logs and fix the issues.
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && needs.deploy-production.result == 'success'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            ## 🚀 BioShield Insurance Release v${{ github.run_number }}
+
+            ### ✨ What's New
+            - Smart contracts deployed to Base mainnet
+            - API and frontend updated
+            - Security audits passed
+            - Performance tests completed
+
+            ### 🔗 Links
+            - [Live Application](https://app.bioshield.insurance)
+            - [API Documentation](https://api.bioshield.insurance/docs)
+            - [Smart Contracts](https://basescan.org/address/${{ env.CONTRACT_ADDRESS }})
+
+            ### 📊 Metrics
+            - Gas optimization: Improved by X%
+            - Test coverage: Y%
+            - Performance: Z ms average response time
+          draft: false
+          prerelease: false

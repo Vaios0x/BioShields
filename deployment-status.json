@@ -1,0 +1,15 @@
+{
+  "status": "not_deployed",
+  "timestamp": "2025-09-15T20:00:00.000Z",
+  "wallet_address": null,
+  "cluster": "devnet",
+  "keypair_file": "./devnet-keypair.json",
+  "next_steps": [
+    "Install Solana CLI tools in WSL",
+    "Configure Solana for devnet",
+    "Request SOL airdrop",
+    "Build Anchor project",
+    "Deploy to devnet"
+  ],
+  "message": "Contracts not deployed - Solana tools need to be installed in WSL environment"
+}

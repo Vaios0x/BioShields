@@ -1,0 +1,45 @@
+{
+  "name": "bioshield-insurance",
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "outputDirectory": ".next",
+  "env": {
+    "NEXT_PUBLIC_SOLANA_RPC": "https://api.testnet.solana.com",
+    "NEXT_PUBLIC_BASE_RPC": "https://sepolia.base.org",
+    "NEXT_PUBLIC_PROGRAM_ID": "BioSh1eLdInsur4nc3Pr0gr4mIDxxxxxxxxxxxxxx",
+    "NEXT_PUBLIC_INSURANCE_POOL": "InsurancePoolAddressHere",
+    "NEXT_PUBLIC_LIVES_TOKEN": "DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz",
+    "NEXT_PUBLIC_SHIELD_TOKEN": "6ESbK51EppXAvQu5GtyWd9m7jqForjPm8F4fGQrLyKqP",
+    "NEXT_PUBLIC_PROJECT_ID": "6c5ea103d2358fc8d91672222874f71b",
+    "NEXT_PUBLIC_LIVES_TOKEN_ACCOUNT": "CqVHxoqmF1Njio7apTH81SNvoCSr7cwSNnLTp3HVt5tJ",
+    "NEXT_PUBLIC_SHIELD_TOKEN_ACCOUNT": "EdCHhUgXgFjSax8SENbBy8zTiLVDH4xKeqscQWiR82vG"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/home",
+      "destination": "/",
+      "permanent": true
+    }
+  ]
+}

@@ -1,0 +1,567 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "BioShield Insurance - Overview Dashboard",
+    "tags": ["bioshield", "insurance", "defi", "overview"],
+    "style": "dark",
+    "timezone": "UTC",
+    "refresh": "30s",
+    "schemaVersion": 30,
+    "version": 1,
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["5s", "10s", "30s", "1m", "5m", "15m", "30m", "1h", "2h", "1d"],
+      "time_options": ["5m", "15m", "1h", "6h", "12h", "24h", "2d", "7d", "30d"]
+    },
+    "templating": {
+      "list": [
+        {
+          "name": "environment",
+          "type": "query",
+          "query": "label_values(up, environment)",
+          "current": {
+            "text": "production",
+            "value": "production"
+          },
+          "options": [],
+          "refresh": 1,
+          "includeAll": false,
+          "multi": false
+        },
+        {
+          "name": "chain",
+          "type": "query",
+          "query": "label_values(pool_tvl_usd, chain)",
+          "current": {
+            "text": "All",
+            "value": "$__all"
+          },
+          "options": [],
+          "refresh": 1,
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Status",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {
+                  "color": "red",
+                  "value": 0
+                },
+                {
+                  "color": "green",
+                  "value": 1
+                }
+              ]
+            },
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN"
+                  },
+                  "1": {
+                    "text": "UP"
+                  }
+                },
+                "type": "value"
+              }
+            ]
+          }
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"bioshield-api\"}",
+            "legendFormat": "API",
+            "refId": "A"
+          },
+          {
+            "expr": "up{job=\"bioshield-frontend\"}",
+            "legendFormat": "Frontend",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Total Value Locked (TVL)",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "currencyUSD",
+            "decimals": 0
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(pool_tvl_usd{chain=~\"$chain\"})",
+            "legendFormat": "Total TVL",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Active Policies",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "short",
+            "decimals": 0
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(active_coverages_total{chain=~\"$chain\"})",
+            "legendFormat": "Active Policies",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Claims Processed (24h)",
+        "type": "stat",
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "short",
+            "decimals": 0
+          }
+        },
+        "targets": [
+          {
+            "expr": "sum(increase(claims_processed_total{chain=~\"$chain\"}[24h]))",
+            "legendFormat": "Claims Processed",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Pool Utilization by Chain",
+        "type": "piechart",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 4
+        },
+        "targets": [
+          {
+            "expr": "pool_utilization_ratio * 100",
+            "legendFormat": "{{ chain }}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "max": 100,
+            "min": 0
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Request Rate & Response Time",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 4
+        },
+        "yAxes": [
+          {
+            "label": "Requests/sec",
+            "logBase": 1,
+            "max": null,
+            "min": 0,
+            "show": true
+          },
+          {
+            "label": "Response Time (ms)",
+            "logBase": 1,
+            "max": null,
+            "min": 0,
+            "show": true
+          }
+        ],
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"bioshield-api\"}[5m])",
+            "legendFormat": "Request Rate",
+            "refId": "A",
+            "yAxis": 1
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"bioshield-api\"}[5m])) * 1000",
+            "legendFormat": "95th Percentile Response Time",
+            "refId": "B",
+            "yAxis": 2
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Error Rate by Endpoint",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 4
+        },
+        "yAxes": [
+          {
+            "label": "Error Rate (%)",
+            "logBase": 1,
+            "max": null,
+            "min": 0,
+            "show": true
+          }
+        ],
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"bioshield-api\",status=~\"5..\"}[5m]) / rate(http_requests_total{job=\"bioshield-api\"}[5m]) * 100",
+            "legendFormat": "{{ method }} {{ route }}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Coverage Creation Trend",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "yAxes": [
+          {
+            "label": "Coverages Created",
+            "logBase": 1,
+            "max": null,
+            "min": 0,
+            "show": true
+          }
+        ],
+        "targets": [
+          {
+            "expr": "rate(coverages_created_total{chain=~\"$chain\"}[1h])",
+            "legendFormat": "{{ chain }} - {{ coverage_type }}",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Claim Processing Timeline",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        },
+        "yAxes": [
+          {
+            "label": "Processing Time (hours)",
+            "logBase": 1,
+            "max": null,
+            "min": 0,
+            "show": true
+          }
+        ],
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.5, rate(claim_processing_duration_seconds_bucket[1h])) / 3600",
+            "legendFormat": "Median",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(claim_processing_duration_seconds_bucket[1h])) / 3600",
+            "legendFormat": "95th Percentile",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Gas Price Trends",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 20
+        },
+        "yAxes": [
+          {
+            "label": "Gas Price (gwei)",
+            "logBase": 1,
+            "max": null,
+            "min": 0,
+            "show": true
+          }
+        ],
+        "targets": [
+          {
+            "expr": "gas_price_gwei{chain=\"base\"}",
+            "legendFormat": "Base Network",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Oracle Response Times",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 8,
+          "y": 20
+        },
+        "yAxes": [
+          {
+            "label": "Response Time (seconds)",
+            "logBase": 1,
+            "max": null,
+            "min": 0,
+            "show": true
+          }
+        ],
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(oracle_response_duration_seconds_bucket[5m]))",
+            "legendFormat": "Oracle Response Time",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "System Resource Usage",
+        "type": "graph",
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 20
+        },
+        "yAxes": [
+          {
+            "label": "Usage (%)",
+            "logBase": 1,
+            "max": 100,
+            "min": 0,
+            "show": true
+          }
+        ],
+        "targets": [
+          {
+            "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "CPU Usage",
+            "refId": "A"
+          },
+          {
+            "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+            "legendFormat": "Memory Usage",
+            "refId": "B"
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "Top Coverage Types",
+        "type": "table",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 28
+        },
+        "targets": [
+          {
+            "expr": "topk(5, sum by (coverage_type) (coverages_created_total))",
+            "legendFormat": "",
+            "refId": "A",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "Time": true,
+                "__name__": true,
+                "job": true,
+                "instance": true
+              },
+              "renameByName": {
+                "coverage_type": "Coverage Type",
+                "Value": "Total Created"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "title": "Recent Claims Activity",
+        "type": "logs",
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 28
+        },
+        "targets": [
+          {
+            "expr": "{job=\"bioshield-api\"} |= \"claim\"",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "showLabels": false,
+          "showCommonLabels": false,
+          "wrapLogMessage": false,
+          "prettifyLogMessage": false,
+          "enableLogDetails": true,
+          "dedupStrategy": "none",
+          "sortOrder": "Descending"
+        }
+      },
+      {
+        "id": 15,
+        "title": "Business Metrics Summary",
+        "type": "stat",
+        "gridPos": {
+          "h": 6,
+          "w": 24,
+          "x": 0,
+          "y": 36
+        },
+        "targets": [
+          {
+            "expr": "sum(premium_volume_usd{chain=~\"$chain\"})",
+            "legendFormat": "Total Premium Volume",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(claims_paid_usd{chain=~\"$chain\"})",
+            "legendFormat": "Total Claims Paid",
+            "refId": "B"
+          },
+          {
+            "expr": "sum(pool_yield_earned_usd{chain=~\"$chain\"})",
+            "legendFormat": "Yield Earned",
+            "refId": "C"
+          },
+          {
+            "expr": "avg(pool_apy_percent{chain=~\"$chain\"})",
+            "legendFormat": "Average APY",
+            "refId": "D"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 0
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "Average APY"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "percent"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "changes(process_start_time_seconds{job=\"bioshield-api\"}[1h])",
+          "iconColor": "green",
+          "tagKeys": "version",
+          "textColumn": "",
+          "titleColumn": "Deployment"
+        },
+        {
+          "name": "Alerts",
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "ALERTS{alertstate=\"firing\"}",
+          "iconColor": "red",
+          "tagKeys": "alertname,severity",
+          "textColumn": "summary",
+          "titleColumn": "Alert"
+        }
+      ]
+    }
+  }
+}

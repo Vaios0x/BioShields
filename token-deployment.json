@@ -1,0 +1,43 @@
+{
+  "timestamp": "2025-09-15T21:04:04.726Z",
+  "cluster": "devnet",
+  "wallet": "3S8EEWxgFTpoAPip78CBanP7xjNuUQK5Yb3Ezin4pFxF",
+  "tokens": {
+    "LIVES": {
+      "mint": "DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz",
+      "tokenAccount": "CqVHxoqmF1Njio7apTH81SNvoCSr7cwSNnLTp3HVt5tJ",
+      "supply": "1000000000000000000",
+      "decimals": 9,
+      "balance": "1000000000000000000",
+      "config": {
+        "name": "BioShield Lives Token",
+        "symbol": "LIVES",
+        "decimals": 9,
+        "description": "Utility token for BioShield Insurance platform with 50% premium discount",
+        "image": "https://bioshield.insurance/tokens/lives.png",
+        "initialSupply": 1000000000,
+        "maxSupply": 10000000000
+      }
+    },
+    "SHIELD": {
+      "mint": "6ESbK51EppXAvQu5GtyWd9m7jqForjPm8F4fGQrLyKqP",
+      "tokenAccount": "EdCHhUgXgFjSax8SENbBy8zTiLVDH4xKeqscQWiR82vG",
+      "supply": "500000000000000000",
+      "decimals": 9,
+      "balance": "500000000000000000",
+      "config": {
+        "name": "BioShield Shield Token",
+        "symbol": "SHIELD",
+        "decimals": 9,
+        "description": "Governance and liquidity reward token for BioShield Insurance",
+        "image": "https://bioshield.insurance/tokens/shield.png",
+        "initialSupply": 500000000,
+        "maxSupply": 5000000000
+      }
+    }
+  },
+  "explorer_urls": {
+    "lives": "https://explorer.solana.com/address/DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz?cluster=devnet",
+    "shield": "https://explorer.solana.com/address/6ESbK51EppXAvQu5GtyWd9m7jqForjPm8F4fGQrLyKqP?cluster=devnet"
+  }
+}
