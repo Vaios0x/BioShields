@@ -22,6 +22,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav'
 import { OnChainDemo } from '@/components/demo/OnChainDemo'
+import { InteractiveDemo } from '@/components/demo/InteractiveDemo'
 import { useWeb3Connection } from '@/hooks/useWeb3Connection'
 import { useInsurance } from '@/hooks/useInsurance'
 import { useLivesToken } from '@/hooks/useLivesToken'
@@ -31,7 +32,7 @@ import toast from 'react-hot-toast'
 
 export default function DemoPage() {
   const [mounted, setMounted] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'demo' | 'features'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'demo' | 'interactive' | 'features'>('overview')
 
   const { 
     isConnected, 
@@ -187,7 +188,8 @@ export default function DemoPage() {
             <div className="flex flex-wrap justify-center gap-2">
               {[
                 { id: 'overview', label: 'Resumen', icon: <XCircle className="w-4 h-4" /> },
-                { id: 'demo', label: 'Demo Interactivo', icon: <Activity className="w-4 h-4" /> },
+                { id: 'demo', label: 'Demo On-Chain', icon: <Activity className="w-4 h-4" /> },
+                { id: 'interactive', label: 'Demo Interactivo', icon: <Zap className="w-4 h-4" /> },
                 { id: 'features', label: 'Características', icon: <CheckCircle className="w-4 h-4" /> }
               ].map((tab) => (
                 <button
@@ -295,10 +297,10 @@ export default function DemoPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <GradientButton 
                     fullWidth
-                    onClick={() => setActiveTab('demo')}
+                    onClick={() => setActiveTab('interactive')}
                   >
-                    <Activity className="w-4 h-4 mr-2" />
-                    Ejecutar Demo
+                    <Zap className="w-4 h-4 mr-2" />
+                    Ejecutar Demo Interactivo
                   </GradientButton>
                   <GradientButton 
                     fullWidth
@@ -327,7 +329,25 @@ export default function DemoPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
+              <div className="mb-4">
+                <h2 className="text-2xl font-bold text-text-primary mb-2">
+                  🚀 Demo On-Chain Real
+                </h2>
+                <p className="text-text-secondary">
+                  Ejecuta transacciones reales en testnet y ve los hashes de confirmación
+                </p>
+              </div>
               <OnChainDemo />
+            </motion.div>
+          )}
+
+          {activeTab === 'interactive' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <InteractiveDemo />
             </motion.div>
           )}
 

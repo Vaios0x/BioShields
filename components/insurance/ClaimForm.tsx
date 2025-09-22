@@ -267,8 +267,8 @@ export function ClaimForm({ policyId, onClose }: ClaimFormProps) {
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
               <option value="">Selecciona una póliza</option>
-              {mockPolicies.filter(p => p.status === 'active').map((policy) => (
-                <option key={policy.id} value={policy.id}>
+              {mockPolicies.filter(p => p.status === 'active').map((policy, index) => (
+                <option key={policy.id || `mock-policy-${index}`} value={policy.id}>
                   {policy.name} - {formatCurrency(policy.coverageAmount)}
                 </option>
               ))}

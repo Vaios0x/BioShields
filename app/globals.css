@@ -5,6 +5,88 @@
 /* Solana Wallet Adapter Styles */
 @import '@solana/wallet-adapter-react-ui/styles.css';
 
+/* Custom Wallet Adapter Styles for Mobile Compatibility */
+.wallet-adapter-button {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border: none;
+  border-radius: 12px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 12px 24px;
+  transition: all 0.3s ease;
+}
+
+.wallet-adapter-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(124, 58, 237, 0.3);
+}
+
+.wallet-adapter-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.wallet-adapter-modal-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.wallet-adapter-modal {
+  background: var(--background);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.wallet-adapter-modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.wallet-adapter-modal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.wallet-adapter-modal-list-item {
+  margin-bottom: 12px;
+}
+
+.wallet-adapter-modal-list-item button {
+  width: 100%;
+  background: var(--card-background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--text-primary);
+}
+
+.wallet-adapter-modal-list-item button:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-2px);
+}
+
 :root {
   --primary: #7c3aed;
   --secondary: #06b6d4;

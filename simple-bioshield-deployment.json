@@ -1,0 +1,12 @@
+{
+  "baseSepolia": {
+    "address": "0x01931850d5eb80370a2b8de8e419f638eefd875d",
+    "txHash": "0x7f08a1c35f721904d899637b70c89808748064249890500ee2514cb8933df6d5",
+    "explorer": "https://sepolia.basescan.org"
+  },
+  "optimismSepolia": {
+    "address": "0x9f6f13a1f3d5929f11911da3dde7a4b903ab9cbf",
+    "txHash": "0x3078c9c00490290b02178df7739b9ac439e3d283838c83a76be27585343eb89b",
+    "explorer": "https://optimism-sepolia.blockscout.com"
+  }
+}

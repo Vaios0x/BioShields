@@ -13,7 +13,7 @@ import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adap
 import { ConnectionProvider } from '@solana/wallet-adapter-react'
 import { clusterApiUrl } from '@solana/web3.js'
 import { Adapter } from '@solana/wallet-adapter-base'
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useState } from 'react'
 
 // CSS will be imported in globals.css to avoid TypeScript issues
 
@@ -53,7 +53,7 @@ const modal = createAppKit({
     icons: ['https://bioshield.insurance/icon.png'],
   },
   features: {
-    analytics: true,
+    analytics: false,
     email: false,
     socials: ['discord'],
     emailShowWallets: false,

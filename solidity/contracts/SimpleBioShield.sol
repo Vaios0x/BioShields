@@ -1,200 +1,168 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
-/**
- * @title SimpleBioShield
- * @dev Simplified version of BioShield Insurance for testing deployment
- */
-contract SimpleBioShield is Ownable, ReentrancyGuard {
-    
-    // Events
-    event InsurancePoolCreated(uint256 indexed poolId, string name, uint256 capacity);
-    event CoveragePurchased(uint256 indexed coverageId, address indexed user, uint256 amount);
-    event ClaimSubmitted(uint256 indexed claimId, address indexed user, uint256 amount);
-    
-    // Structs
-    struct InsurancePool {
+contract SimpleBioShield {
+    struct Policy {
         uint256 id;
-        string name;
-        string description;
-        uint256 capacity;
-        uint256 premiumRate; // in basis points (10000 = 100%)
-        uint256 coveragePeriod;
-        bool active;
-        address creator;
-    }
-    
-    struct Coverage {
-        uint256 id;
-        address user;
-        uint256 poolId;
-        uint256 amount;
+        address policyholder;
+        uint256 coverageAmount;
         uint256 premium;
-        uint256 startTime;
-        uint256 endTime;
-        bool active;
+        string triggerConditions;
+        bool isActive;
+        uint256 createdAt;
     }
-    
-    struct Claim {
-        uint256 id;
-        address user;
-        uint256 coverageId;
-        uint256 amount;
-        string reason;
-        bool approved;
-        bool processed;
+
+    struct PoolStats {
+        uint256 totalPolicies;
+        uint256 totalCoverage;
+        uint256 totalPremiums;
+        uint256 activePolicies;
     }
+
+    mapping(uint256 => Policy) public policies;
+    mapping(address => uint256[]) public userPolicies;
+    uint256 public nextPolicyId = 1;
+    address public owner;
     
-    // State variables
-    uint256 public nextPoolId = 1;
-    uint256 public nextCoverageId = 1;
-    uint256 public nextClaimId = 1;
-    
-    mapping(uint256 => InsurancePool) public pools;
-    mapping(uint256 => Coverage) public coverages;
-    mapping(uint256 => Claim) public claims;
-    
-    address public livesToken;
-    address public shieldToken;
-    
-    // Constructor
-    constructor(address _livesToken, address _shieldToken) Ownable(msg.sender) {
-        livesToken = _livesToken;
-        shieldToken = _shieldToken;
+    PoolStats public poolStats;
+
+    event PolicyCreated(
+        uint256 indexed policyId,
+        address indexed policyholder,
+        uint256 coverageAmount,
+        uint256 premium
+    );
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Not the owner");
+        _;
     }
-    
-    // Functions
-    function createInsurancePool(
-        string memory _name,
-        string memory _description,
-        uint256 _capacity,
-        uint256 _premiumRate,
-        uint256 _coveragePeriod
-    ) external onlyOwner returns (uint256) {
-        require(_capacity > 0, "Capacity must be greater than 0");
-        require(_premiumRate <= 10000, "Premium rate cannot exceed 100%");
-        require(_coveragePeriod > 0, "Coverage period must be greater than 0");
+
+    constructor() {
+        owner = msg.sender;
+        // Initialize pool stats
+        poolStats = PoolStats({
+            totalPolicies: 0,
+            totalCoverage: 0,
+            totalPremiums: 0,
+            activePolicies: 0
+        });
+    }
+
+    // Create a new insurance policy (simple version)
+    function createPolicy(
+        uint256 _coverageAmount,
+        uint256 _premium,
+        string memory _triggerConditions
+    ) external payable {
+        require(_coverageAmount > 0, "Coverage amount must be greater than 0");
+        require(_premium > 0, "Premium must be greater than 0");
+        require(msg.value >= _premium, "Insufficient ETH for premium");
+        require(bytes(_triggerConditions).length > 0, "Trigger conditions required");
         
-        uint256 poolId = nextPoolId++;
-        
-        pools[poolId] = InsurancePool({
-            id: poolId,
-            name: _name,
-            description: _description,
-            capacity: _capacity,
-            premiumRate: _premiumRate,
-            coveragePeriod: _coveragePeriod,
-            active: true,
-            creator: msg.sender
+        // Create policy
+        uint256 policyId = nextPolicyId++;
+        policies[policyId] = Policy({
+            id: policyId,
+            policyholder: msg.sender,
+            coverageAmount: _coverageAmount,
+            premium: _premium,
+            triggerConditions: _triggerConditions,
+            isActive: true,
+            createdAt: block.timestamp
         });
         
-        emit InsurancePoolCreated(poolId, _name, _capacity);
-        return poolId;
+        // Update user policies
+        userPolicies[msg.sender].push(policyId);
+        
+        // Update pool stats
+        poolStats.totalPolicies++;
+        poolStats.totalCoverage += _coverageAmount;
+        poolStats.totalPremiums += _premium;
+        poolStats.activePolicies++;
+        
+        emit PolicyCreated(policyId, msg.sender, _coverageAmount, _premium);
     }
-    
-    function purchaseCoverage(
-        uint256 _poolId,
-        uint256 _amount
-    ) external nonReentrant returns (uint256) {
-        InsurancePool memory pool = pools[_poolId];
-        require(pool.active, "Pool is not active");
-        require(_amount > 0, "Amount must be greater than 0");
-        require(_amount <= pool.capacity, "Amount exceeds pool capacity");
+
+    // Create a new insurance policy with LIVES token discount (simplified)
+    function createPolicyWithLives(
+        uint256 _coverageAmount,
+        uint256 _premium,
+        string memory _triggerConditions,
+        uint256 _livesAmount
+    ) external payable {
+        require(_coverageAmount > 0, "Coverage amount must be greater than 0");
+        require(_premium > 0, "Premium must be greater than 0");
+        require(_livesAmount > 0, "LIVES amount must be greater than 0");
+        require(bytes(_triggerConditions).length > 0, "Trigger conditions required");
         
-        uint256 premium = (_amount * pool.premiumRate) / 10000;
+        // Calculate 50% discount
+        uint256 discountAmount = (_premium * 50) / 100;
+        uint256 discountedPremium = _premium - discountAmount;
         
-        // Transfer premium from user to contract
-        IERC20(shieldToken).transferFrom(msg.sender, address(this), premium);
+        // Check if user has enough ETH for discounted premium
+        require(msg.value >= discountedPremium, "Insufficient ETH for discounted premium");
         
-        uint256 coverageId = nextCoverageId++;
-        
-        coverages[coverageId] = Coverage({
-            id: coverageId,
-            user: msg.sender,
-            poolId: _poolId,
-            amount: _amount,
-            premium: premium,
-            startTime: block.timestamp,
-            endTime: block.timestamp + pool.coveragePeriod,
-            active: true
+        // Create policy with discounted premium
+        uint256 policyId = nextPolicyId++;
+        policies[policyId] = Policy({
+            id: policyId,
+            policyholder: msg.sender,
+            coverageAmount: _coverageAmount,
+            premium: discountedPremium,
+            triggerConditions: _triggerConditions,
+            isActive: true,
+            createdAt: block.timestamp
         });
         
-        emit CoveragePurchased(coverageId, msg.sender, _amount);
-        return coverageId;
-    }
-    
-    function submitClaim(
-        uint256 _coverageId,
-        uint256 _amount,
-        string memory _reason
-    ) external returns (uint256) {
-        Coverage memory coverage = coverages[_coverageId];
-        require(coverage.user == msg.sender, "Not the coverage owner");
-        require(coverage.active, "Coverage is not active");
-        require(block.timestamp <= coverage.endTime, "Coverage has expired");
-        require(_amount <= coverage.amount, "Claim amount exceeds coverage");
+        // Update user policies
+        userPolicies[msg.sender].push(policyId);
         
-        uint256 claimId = nextClaimId++;
+        // Update pool stats
+        poolStats.totalPolicies++;
+        poolStats.totalCoverage += _coverageAmount;
+        poolStats.totalPremiums += discountedPremium;
+        poolStats.activePolicies++;
         
-        claims[claimId] = Claim({
-            id: claimId,
-            user: msg.sender,
-            coverageId: _coverageId,
-            amount: _amount,
-            reason: _reason,
-            approved: false,
-            processed: false
-        });
-        
-        emit ClaimSubmitted(claimId, msg.sender, _amount);
-        return claimId;
+        emit PolicyCreated(policyId, msg.sender, _coverageAmount, discountedPremium);
     }
-    
-    function approveClaim(uint256 _claimId) external onlyOwner {
-        Claim storage claim = claims[_claimId];
-        require(!claim.processed, "Claim already processed");
-        
-        claim.approved = true;
-        claim.processed = true;
-        
-        // Transfer claim amount to user
-        IERC20(shieldToken).transfer(claim.user, claim.amount);
+
+    // Get user's policies
+    function getUserPolicies(address _user) external view returns (uint256[] memory) {
+        return userPolicies[_user];
     }
-    
-    function rejectClaim(uint256 _claimId) external onlyOwner {
-        Claim storage claim = claims[_claimId];
-        require(!claim.processed, "Claim already processed");
-        
-        claim.approved = false;
-        claim.processed = true;
+
+    // Get policy details
+    function getPolicy(uint256 _policyId) external view returns (Policy memory) {
+        return policies[_policyId];
     }
-    
-    // View functions
-    function getPool(uint256 _poolId) external view returns (InsurancePool memory) {
-        return pools[_poolId];
+
+    // Get pool statistics
+    function getPoolStats() external view returns (PoolStats memory) {
+        return poolStats;
     }
-    
-    function getCoverage(uint256 _coverageId) external view returns (Coverage memory) {
-        return coverages[_coverageId];
+
+    // Get total number of policies
+    function getPolicyCount() external view returns (uint256) {
+        return poolStats.totalPolicies;
     }
-    
-    function getClaim(uint256 _claimId) external view returns (Claim memory) {
-        return claims[_claimId];
+
+    // Get all policies (for admin purposes)
+    function getAllPolicies() external view returns (Policy[] memory) {
+        Policy[] memory allPolicies = new Policy[](poolStats.totalPolicies);
+        for (uint256 i = 1; i < nextPolicyId; i++) {
+            allPolicies[i - 1] = policies[i];
+        }
+        return allPolicies;
     }
-    
-    function getPoolCount() external view returns (uint256) {
-        return nextPoolId - 1;
+
+    // Withdraw contract balance (only owner)
+    function withdraw() external onlyOwner {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No balance to withdraw");
+        payable(owner).transfer(balance);
     }
-    
-    function getCoverageCount() external view returns (uint256) {
-        return nextCoverageId - 1;
-    }
-    
-    function getClaimCount() external view returns (uint256) {
-        return nextClaimId - 1;
-    }
+
+    // Receive ETH
+    receive() external payable {}
 }
