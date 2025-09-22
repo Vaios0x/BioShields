@@ -22,9 +22,28 @@ export function useTransactionService(): TransactionService | null {
   const { data: walletClient } = useWalletClient()
   const { writeContractAsync: writeContract } = useWriteContract()
   
-  // Solana hooks
-  const { connection: solanaConnection } = useConnection()
-  const { publicKey: solanaAddress, wallet: solanaWallet } = useWallet()
+  // Solana hooks with error handling
+  let solanaConnection: any = null
+  let solanaAddress: any = null
+  let solanaWallet: any = null
+  
+  try {
+    const connectionResult = useConnection()
+    solanaConnection = connectionResult.connection
+  } catch (error) {
+    console.warn('Solana connection not available:', error)
+    solanaConnection = null
+  }
+  
+  try {
+    const walletResult = useWallet()
+    solanaAddress = walletResult.publicKey
+    solanaWallet = walletResult.wallet
+  } catch (error) {
+    console.warn('Solana wallet not available:', error)
+    solanaAddress = null
+    solanaWallet = null
+  }
 
   const transactionService = useMemo(() => {
     if (!isConnected) return null

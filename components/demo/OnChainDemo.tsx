@@ -45,10 +45,20 @@ export function OnChainDemo() {
   } = useWeb3Connection()
   
   const transactionService = useTransactionService()
-  const { createPolicy, policies, loading: insuranceLoading } = useInsurance()
+  const { createPolicy, policies, loading: insuranceLoading, fetchPolicies } = useInsurance()
   const { balance: livesBalance, approve } = useLivesToken()
 
   const demoConfig = getDemoConfig()
+
+  // Función para obtener la URL del explorador según la red
+  const getExplorerUrl = (txHash: string) => {
+    if (currentNetwork === 'ethereum') {
+      return `https://sepolia.basescan.org/tx/${txHash}`
+    } else if (currentNetwork === 'solana') {
+      return `https://explorer.solana.com/tx/${txHash}?cluster=devnet`
+    }
+    return '#'
+  }
 
   useEffect(() => {
     initializeSteps()
@@ -85,10 +95,23 @@ export function OnChainDemo() {
               clinicalTrialId: 'NCT12345678',
               dataSource: 'clinicaltrials.gov'
             },
-            false // payWithLives
+            true // Usar LIVES para obtener descuento del 50%
           )
           if (!result.success) {
             throw new Error(result.error)
+          }
+          
+          // Guardar el hash de la transacción
+          if (result.tx) {
+            setSteps(prev => prev.map((s, i) => 
+              s.id === 'create-policy' ? { 
+                ...s, 
+                result: { 
+                  txHash: result.tx, 
+                  policyId: (result as any).policyId || (result as any).coverageId || 'pending'
+                } 
+              } : s
+            ))
           }
         },
         status: 'pending'
@@ -99,10 +122,24 @@ export function OnChainDemo() {
         description: 'Aprueba el uso de tokens $LIVES para obtener 50% de descuento',
         action: async () => {
           if (address) {
-            const networkConfig = demoConfig.networks[currentNetwork]
-            const contractAddress = 'contract' in networkConfig ? networkConfig.contract : ''
+            // Usar la dirección real del contrato BioShield según la red actual
+            let contractAddress = ''
+            if (currentNetwork === 'ethereum') {
+              // Usar Base Sepolia como red por defecto para Ethereum
+              contractAddress = '0x5C0F9F645E82cFB26918369Feb1189211511250e' // Base Sepolia
+            } else if (currentNetwork === 'solana') {
+              // Para Solana, no necesitamos aprobar tokens ERC20
+              toast.success('Para Solana, el descuento se aplica automáticamente')
+              return
+            }
             if (contractAddress) {
-              await approve(contractAddress, 12500) // half of premium
+              const result = await approve(contractAddress, 12500) // half of premium
+              if (result.success && result.tx) {
+                // Guardar el hash de la transacción
+                setSteps(prev => prev.map((s, i) => 
+                  s.id === 'approve-lives' ? { ...s, result: { txHash: result.tx } } : s
+                ))
+              }
             }
           }
         },
@@ -113,8 +150,8 @@ export function OnChainDemo() {
         title: 'Ver Pólizas Activas',
         description: 'Revisa todas tus pólizas de seguro activas',
         action: async () => {
-          // Mock action - policies are already loaded
-          await new Promise(resolve => setTimeout(resolve, 500))
+          // Refrescar las pólizas para mostrar las nuevas
+          await fetchPolicies()
         },
         status: policies.length > 0 ? 'completed' : 'pending'
       }
@@ -292,6 +329,31 @@ export function OnChainDemo() {
                         Error: {step.result}
                       </p>
                     )}
+                    {step.status === 'completed' && step.result && step.result.txHash && (
+                      <div className="mt-2 p-2 bg-success/10 rounded-lg border border-success/20">
+                        <div className="flex items-center space-x-2 text-success">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-sm font-medium">Transacción Exitosa</span>
+                        </div>
+                        <div className="mt-1 flex items-center space-x-2">
+                          <span className="text-xs text-text-secondary">Hash:</span>
+                          <code className="text-xs bg-white/10 px-2 py-1 rounded font-mono">
+                            {step.result.txHash.slice(0, 10)}...{step.result.txHash.slice(-8)}
+                          </code>
+                          <button
+                            onClick={() => window.open(getExplorerUrl(step.result.txHash), '_blank')}
+                            className="text-xs text-accent hover:text-accent/80 underline"
+                          >
+                            Ver en Explorer
+                          </button>
+                        </div>
+                        {step.result.policyId && (
+                          <div className="mt-1 text-xs text-text-secondary">
+                            Policy ID: {step.result.policyId}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -357,6 +419,53 @@ export function OnChainDemo() {
                 </div>
               </div>
             ))}
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Transaction Summary */}
+      {steps.some(step => step.result && step.result.txHash) && (
+        <GlassCard className="p-6 bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20">
+          <div className="flex items-center space-x-3 mb-4">
+            <ExternalLink className="w-6 h-6 text-accent" />
+            <h3 className="text-lg font-semibold text-text-primary">
+              Resumen de Transacciones
+            </h3>
+          </div>
+          <div className="space-y-3">
+            {steps
+              .filter(step => step.result && step.result.txHash)
+              .map((step) => (
+                <div key={step.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                  <div>
+                    <div className="font-medium text-text-primary">
+                      {step.title}
+                    </div>
+                    <div className="text-sm text-text-secondary">
+                      {step.result.txHash.slice(0, 10)}...{step.result.txHash.slice(-8)}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => window.open(getExplorerUrl(step.result.txHash), '_blank')}
+                      className="flex items-center space-x-1 text-accent hover:text-accent/80 text-sm"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Ver en Explorer</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(step.result.txHash)
+                        toast.success('Hash copiado al portapapeles')
+                      }}
+                      className="flex items-center space-x-1 text-text-secondary hover:text-text-primary text-sm"
+                    >
+                      <Copy className="w-4 h-4" />
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
           </div>
         </GlassCard>
       )}

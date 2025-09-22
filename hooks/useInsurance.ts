@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount } from 'wagmi'
+import { useAccount, useChainId } from 'wagmi'
 import { usePublicClient, useWalletClient, useWriteContract, useReadContract } from 'wagmi'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { BioShieldProgram } from '@/lib/solana/bioshield-program'
@@ -10,8 +10,19 @@ import { Connection, PublicKey } from '@solana/web3.js'
 import { ethers } from 'ethers'
 import toast from 'react-hot-toast'
 
-// Contract addresses and ABI
-const BIOSHIELD_ADDRESS = process.env.NEXT_PUBLIC_BIOSHIELD_CONTRACT || '0x...'
+// Get the correct BioShield contract address based on the current network
+const getBioShieldAddress = (chainId?: number) => {
+  // Base Sepolia (chainId: 84532) - Use complete contract
+  if (chainId === 84532) {
+    return process.env.NEXT_PUBLIC_BASE_BIOSHIELD_COMPLETE || '0xEB5112813E48e67e3dE7419B8a9cE93e30A83e3a'
+  }
+  // Optimism Sepolia (chainId: 11155420) - Use complete contract
+  if (chainId === 11155420) {
+    return process.env.NEXT_PUBLIC_OPTIMISM_BIOSHIELD_COMPLETE || '0x45e5FDDa2B3215423B82b2502B388D5dA8944bA9'
+  }
+  // Default fallback - use complete contract on Base Sepolia
+  return '0xEB5112813E48e67e3dE7419B8a9cE93e30A83e3a'
+}
 const BIOSHIELD_ABI = [
   {
     "inputs": [
@@ -20,7 +31,19 @@ const BIOSHIELD_ABI = [
       { "internalType": "string", "name": "triggerConditions", "type": "string" }
     ],
     "name": "createPolicy",
-    "outputs": [{ "internalType": "uint256", "name": "policyId", "type": "uint256" }],
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "coverageAmount", "type": "uint256" },
+      { "internalType": "uint256", "name": "premium", "type": "uint256" },
+      { "internalType": "string", "name": "triggerConditions", "type": "string" },
+      { "internalType": "uint256", "name": "livesAmount", "type": "uint256" }
+    ],
+    "name": "createPolicyWithLives",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -31,13 +54,17 @@ const BIOSHIELD_ABI = [
       {
         "components": [
           { "internalType": "uint256", "name": "id", "type": "uint256" },
+          { "internalType": "address", "name": "user", "type": "address" },
           { "internalType": "uint256", "name": "coverageAmount", "type": "uint256" },
           { "internalType": "uint256", "name": "premium", "type": "uint256" },
           { "internalType": "uint256", "name": "startDate", "type": "uint256" },
           { "internalType": "uint256", "name": "endDate", "type": "uint256" },
-          { "internalType": "uint8", "name": "status", "type": "uint8" }
+          { "internalType": "uint8", "name": "status", "type": "uint8" },
+          { "internalType": "string", "name": "triggerConditions", "type": "string" },
+          { "internalType": "bool", "name": "payWithLives", "type": "bool" },
+          { "internalType": "uint256", "name": "livesDiscount", "type": "uint256" }
         ],
-        "internalType": "struct BioShield.Policy",
+        "internalType": "struct BioShieldInsurance.Policy",
         "name": "",
         "type": "tuple[]"
       }
@@ -85,13 +112,17 @@ export function useInsurance() {
   
   // Ethereum hooks
   const { address: ethAddress, isConnected: ethConnected, chain } = useAccount()
+  const chainId = useChainId()
   const publicClient = usePublicClient()
   const { data: walletClient } = useWalletClient()
   const { writeContractAsync: writeContract } = useWriteContract()
   
+  // Get the correct contract address for the current network
+  const bioshieldAddress = getBioShieldAddress(chainId)
+  
   // Contract read hooks
   const { data: userPolicies } = useReadContract({
-    address: BIOSHIELD_ADDRESS as `0x${string}`,
+    address: bioshieldAddress as `0x${string}`,
     abi: BIOSHIELD_ABI,
     functionName: 'getUserPolicies',
     args: ethAddress ? [ethAddress] : undefined,
@@ -99,14 +130,33 @@ export function useInsurance() {
   })
   
   const { data: poolStats } = useReadContract({
-    address: BIOSHIELD_ADDRESS as `0x${string}`,
+    address: bioshieldAddress as `0x${string}`,
     abi: BIOSHIELD_ABI,
     functionName: 'getPoolStats'
   })
   
-  // Solana hooks
-  const { connection: solanaConnection } = useConnection()
-  const { publicKey: solanaAddress, connected: solanaConnected } = useWallet()
+  // Solana hooks with error handling
+  let solanaConnection: any = null
+  let solanaAddress: any = null
+  let solanaConnected: boolean = false
+  
+  try {
+    const connectionResult = useConnection()
+    solanaConnection = connectionResult.connection
+  } catch (error) {
+    console.warn('Solana connection not available:', error)
+    solanaConnection = null
+  }
+  
+  try {
+    const walletResult = useWallet()
+    solanaAddress = walletResult.publicKey
+    solanaConnected = walletResult.connected
+  } catch (error) {
+    console.warn('Solana wallet not available:', error)
+    solanaAddress = null
+    solanaConnected = false
+  }
 
   // Detect current network
   useEffect(() => {
@@ -271,15 +321,25 @@ export function useInsurance() {
 
       if (currentNetwork === 'ethereum' && writeContract) {
         // Create policy on Ethereum/Base using wagmi
+        const functionName = payWithLives ? 'createPolicyWithLives' : 'createPolicy'
+        const args = payWithLives 
+          ? [
+              BigInt(coverageAmount),
+              BigInt(premium),
+              JSON.stringify(triggerConditions),
+              BigInt(premium / 2) // 50% of premium in LIVES
+            ]
+          : [
+              BigInt(coverageAmount),
+              BigInt(premium),
+              JSON.stringify(triggerConditions)
+            ]
+        
         const txHash = await writeContract({
-          address: BIOSHIELD_ADDRESS as `0x${string}`,
+          address: bioshieldAddress as `0x${string}`,
           abi: BIOSHIELD_ABI,
-          functionName: 'createPolicy',
-          args: [
-            BigInt(coverageAmount),
-            BigInt(premium),
-            JSON.stringify(triggerConditions)
-          ]
+          functionName: functionName as any,
+          args: args as any
         })
         
         result = {
@@ -337,7 +397,7 @@ export function useInsurance() {
         // Submit claim on Ethereum/Base using wagmi
         const policyIdNumber = parseInt(policyId.replace('ETH-', ''))
         const txHash = await writeContract({
-          address: BIOSHIELD_ADDRESS as `0x${string}`,
+          address: bioshieldAddress as `0x${string}`,
           abi: BIOSHIELD_ABI,
           functionName: 'submitClaim',
           args: [BigInt(policyIdNumber), JSON.stringify(evidence)]

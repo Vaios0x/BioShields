@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js'
 
-// Program ID desplegado en devnet
-export const BIOSHIELD_PROGRAM_ID = new PublicKey('3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w')
+// Program ID desplegado en devnet (dirección real del deployment)
+export const BIOSHIELD_PROGRAM_ID = new PublicKey('4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW')
 
 // Configuración de red
 export const SOLANA_NETWORK = 'devnet'
@@ -27,10 +27,10 @@ export const SEEDS = {
   USER_PROFILE: 'user_profile',
 } as const
 
-// Token addresses (se crearán después)
+// Token addresses (direcciones reales del deployment)
 export const TOKEN_ADDRESSES = {
-  LIVES_TOKEN: null as PublicKey | null,  // Token de utilidad
-  SHIELD_TOKEN: null as PublicKey | null, // Token de gobernanza
+  LIVES_TOKEN: new PublicKey('DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz'),  // Token de utilidad
+  SHIELD_TOKEN: new PublicKey('6ESbK51EppXAvQu5GtyWd9m7jqForjPm8F4fGQrLyKqP'), // Token de gobernanza
 } as const
 
 // Pool configuration

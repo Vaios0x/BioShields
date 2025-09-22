@@ -270,9 +270,23 @@ const IDL = {
   ]
 }
 
-const PROGRAM_ID = new PublicKey(process.env.NEXT_PUBLIC_PROGRAM_ID || 'BioSh1eLd...')
-const INSURANCE_POOL = new PublicKey(process.env.NEXT_PUBLIC_INSURANCE_POOL || 'InsurP00L...')
-const LIVES_TOKEN = new PublicKey(process.env.NEXT_PUBLIC_LIVES_TOKEN || 'L1VES...')
+// Función helper para crear PublicKey de forma segura
+function createPublicKey(address: string | undefined, fallback: string): PublicKey {
+  try {
+    if (address && address !== 'InsurancePoolAddressHere' && address.length > 0) {
+      return new PublicKey(address)
+    }
+    return new PublicKey(fallback)
+  } catch (error) {
+    console.warn(`Invalid PublicKey address: ${address}, using fallback: ${fallback}`)
+    return new PublicKey(fallback)
+  }
+}
+
+// Usar las direcciones reales del deployment
+const PROGRAM_ID = createPublicKey(process.env.NEXT_PUBLIC_PROGRAM_ID, '4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW')
+const INSURANCE_POOL = createPublicKey(process.env.NEXT_PUBLIC_INSURANCE_POOL, '4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW')
+const LIVES_TOKEN = createPublicKey(process.env.NEXT_PUBLIC_LIVES_TOKEN, 'DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz')
 
 export interface TriggerConditions {
   clinicalTrialId?: string
@@ -366,7 +380,7 @@ export class BioShieldProgram {
           coverageAccount: new PublicKey(coverageId),
           insured: this.wallet.publicKey!,
           insurancePool: INSURANCE_POOL,
-          oracle: new PublicKey(process.env.CHAINLINK_ORACLE_ADDRESS || '0x...'),
+          oracle: createPublicKey(process.env.CHAINLINK_ORACLE_ADDRESS, '11111111111111111111111111111112'),
         })
         .rpc()
 

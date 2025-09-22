@@ -1,13 +1,39 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useBalance, useWriteContract, useReadContract } from 'wagmi'
+import { useAccount, useBalance, useWriteContract, useReadContract, useChainId, usePublicClient } from 'wagmi'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { formatNumber } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
-const LIVES_TOKEN_ADDRESS = process.env.NEXT_PUBLIC_LIVES_TOKEN || '0x...'
+// Get the correct LIVES token address based on the current network
+const getLivesTokenAddress = (chainId?: number) => {
+  // Base Sepolia (chainId: 84532)
+  if (chainId === 84532) {
+    return process.env.NEXT_PUBLIC_BASE_LIVES_TOKEN || '0x6C9372Dcc93E4F89a0F58123F26CcA3E71A69279'
+  }
+  // Optimism Sepolia (chainId: 11155420)
+  if (chainId === 11155420) {
+    return process.env.NEXT_PUBLIC_OPTIMISM_LIVES_TOKEN || '0x7a157A006F86Ea2770Ba66285AE5e9A18f949AB2'
+  }
+  // Default fallback - use a valid Ethereum address
+  return '0x6C9372Dcc93E4F89a0F58123F26CcA3E71A69279'
+}
+
+// Get the correct SHIELD token address based on the current network
+const getShieldTokenAddress = (chainId?: number) => {
+  // Base Sepolia (chainId: 84532)
+  if (chainId === 84532) {
+    return process.env.NEXT_PUBLIC_BASE_SHIELD_TOKEN || '0xD196B1d67d101E2D6634F5d6F238F7716A8f41AE'
+  }
+  // Optimism Sepolia (chainId: 11155420)
+  if (chainId === 11155420) {
+    return process.env.NEXT_PUBLIC_OPTIMISM_SHIELD_TOKEN || '0x15164c7C1E5ced9788c2fB82424fe595950ee261'
+  }
+  // Default fallback - use a valid Ethereum address
+  return '0xD196B1d67d101E2D6634F5d6F238F7716A8f41AE'
+}
 
 export function useLivesToken() {
   const [balance, setBalance] = useState<number>(0)
@@ -16,13 +42,39 @@ export function useLivesToken() {
   const [currentNetwork, setCurrentNetwork] = useState<'solana' | 'ethereum'>('ethereum')
   
   const { address: ethAddress, isConnected: ethConnected } = useAccount()
-  const { publicKey: solAddress, connected: solConnected } = useWallet()
-  const { connection } = useConnection()
+  const chainId = useChainId()
+  const publicClient = usePublicClient()
+  
+  // Get the correct token address for the current network
+  const livesTokenAddress = getLivesTokenAddress(chainId)
+  
+  // Solana hooks with error handling
+  let solAddress: any = null
+  let solConnected: boolean = false
+  let connection: any = null
+  
+  try {
+    const walletResult = useWallet()
+    solAddress = walletResult.publicKey
+    solConnected = walletResult.connected
+  } catch (error) {
+    console.warn('Solana wallet not available:', error)
+    solAddress = null
+    solConnected = false
+  }
+  
+  try {
+    const connectionResult = useConnection()
+    connection = connectionResult.connection
+  } catch (error) {
+    console.warn('Solana connection not available:', error)
+    connection = null
+  }
   
   // Wagmi hooks for contract interactions
   const { writeContractAsync: writeContract } = useWriteContract()
   const { data: livesBalance } = useReadContract({
-    address: LIVES_TOKEN_ADDRESS as `0x${string}`,
+    address: livesTokenAddress as `0x${string}`,
     abi: [
       {
         "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
@@ -40,7 +92,7 @@ export function useLivesToken() {
   // Ethereum/Base balance
   const { data: ethBalance, isLoading: ethLoading } = useBalance({
     address: ethAddress,
-    token: LIVES_TOKEN_ADDRESS as `0x${string}`,
+    token: livesTokenAddress as `0x${string}`,
   })
 
   // Detect current network
@@ -126,8 +178,42 @@ export function useLivesToken() {
     setError(null)
 
     try {
+      // Verificar que estamos en la red correcta
+      if (chainId !== 84532) { // Base Sepolia
+        toast.error('Please switch to Base Sepolia network')
+        return { success: false, error: 'Wrong network' }
+      }
+
+      // Verificar que el spender es una dirección válida
+      if (!spender || spender === '0x0000000000000000000000000000000000000000') {
+        toast.error('Invalid spender address')
+        return { success: false, error: 'Invalid spender address' }
+      }
+
+      // Calcular el monto con precisión
+      const amountWei = BigInt(amount) * BigInt(10 ** 18)
+      
+      console.log('Approving LIVES token:', {
+        tokenAddress: livesTokenAddress,
+        spender,
+        amount: amount.toString(),
+        amountWei: amountWei.toString(),
+        chainId
+      })
+
+      // Verificar si el contrato existe antes de intentar la transacción
+      try {
+        const code = await publicClient?.getBytecode({ address: livesTokenAddress as `0x${string}` })
+        if (!code || code === '0x') {
+          toast.error('LIVES token contract not found on this network')
+          return { success: false, error: 'Contract not found' }
+        }
+      } catch (contractError) {
+        console.warn('Could not verify contract existence:', contractError)
+      }
+
       const txHash = await writeContract({
-        address: LIVES_TOKEN_ADDRESS as `0x${string}`,
+        address: livesTokenAddress as `0x${string}`,
         abi: [
           {
             "inputs": [
@@ -141,7 +227,7 @@ export function useLivesToken() {
           }
         ],
         functionName: 'approve',
-        args: [spender as `0x${string}`, BigInt(amount * 1e18)]
+        args: [spender as `0x${string}`, amountWei]
       })
       
       toast.success('LIVES approved successfully!')
@@ -150,12 +236,23 @@ export function useLivesToken() {
       const errorMessage = err instanceof Error ? err.message : 'Approval failed'
       console.error('Error approving LIVES:', err)
       setError(errorMessage)
-      toast.error(errorMessage)
+      
+      // Proporcionar mensajes de error más específicos
+      if (errorMessage.includes('Internal JSON-RPC error')) {
+        toast.error('Contract error: The LIVES token contract may not be properly deployed or may not have the approve function')
+      } else if (errorMessage.includes('insufficient funds')) {
+        toast.error('Insufficient funds for gas fees')
+      } else if (errorMessage.includes('user rejected')) {
+        toast.error('Transaction rejected by user')
+      } else {
+        toast.error(`Approval failed: ${errorMessage}`)
+      }
+      
       return { success: false, error: errorMessage }
     } finally {
       setLoading(false)
     }
-  }, [ethConnected, writeContract])
+  }, [ethConnected, writeContract, chainId, livesTokenAddress, publicClient])
 
   const transfer = useCallback(async (to: string, amount: number) => {
     if (!ethConnected && !solConnected) {
@@ -226,13 +323,35 @@ export function useShieldToken() {
   const [error, setError] = useState<string | null>(null)
   
   const { address: ethAddress } = useAccount()
-  const { publicKey: solAddress } = useWallet()
-  const { connection } = useConnection()
+  const chainId = useChainId()
+  
+  // Get the correct token address for the current network
+  const shieldTokenAddress = getShieldTokenAddress(chainId)
+  
+  // Solana hooks with error handling
+  let solAddress: any = null
+  let connection: any = null
+  
+  try {
+    const walletResult = useWallet()
+    solAddress = walletResult.publicKey
+  } catch (error) {
+    console.warn('Solana wallet not available:', error)
+    solAddress = null
+  }
+  
+  try {
+    const connectionResult = useConnection()
+    connection = connectionResult.connection
+  } catch (error) {
+    console.warn('Solana connection not available:', error)
+    connection = null
+  }
 
   // Ethereum/Base balance
   const { data: ethBalance, isLoading: ethLoading } = useBalance({
     address: ethAddress,
-    token: process.env.NEXT_PUBLIC_SHIELD_TOKEN as `0x${string}`,
+    token: shieldTokenAddress as `0x${string}`,
   })
 
   // Fetch Solana balance

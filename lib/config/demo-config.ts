@@ -7,24 +7,24 @@ export const DEMO_CONFIG = {
     solana: {
       name: 'Solana Devnet',
       rpc: 'https://api.devnet.solana.com',
-      programId: '3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w',
-      insurancePool: 'InsurP00L123456789012345678901234567890',
-      livesToken: 'L1VES1234567890123456789012345678901234',
-      shieldToken: 'SH1ELD123456789012345678901234567890123'
+      programId: '4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW',
+      insurancePool: '4dhx4aZHJUQLnekox1kpLsUmb8YZmT3WfaLyhxCCUifW',
+      livesToken: 'DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz',
+      shieldToken: '6ESbK51EppXAvQu5GtyWd9m7jqForjPm8F4fGQrLyKqP'
     },
     ethereum: {
       name: 'Base Sepolia',
       rpc: 'https://sepolia.base.org',
-      contract: '0x1234567890123456789012345678901234567890',
-      livesToken: '0x1234567890123456789012345678901234567890',
-      shieldToken: '0x1234567890123456789012345678901234567890'
+      contract: '0x5C0F9F645E82cFB26918369Feb1189211511250e',
+      livesToken: '0x6C9372Dcc93E4F89a0F58123F26CcA3E71A69279',
+      shieldToken: '0xD196B1d67d101E2D6634F5d6F238F7716A8f41AE'
     },
     optimism: {
       name: 'Optimism Sepolia',
       rpc: 'https://sepolia.optimism.io',
-      contract: '0x1234567890123456789012345678901234567890',
-      livesToken: '0x1234567890123456789012345678901234567890',
-      shieldToken: '0x1234567890123456789012345678901234567890'
+      contract: '0x0E98bc946F105e0371AD6D338d6814A4fcBBaC27',
+      livesToken: '0x7a157A006F86Ea2770Ba66285AE5e9A18f949AB2',
+      shieldToken: '0x15164c7C1E5ced9788c2fB82424fe595950ee261'
     }
   },
 
@@ -85,10 +85,10 @@ export const DEMO_CONFIG = {
 
   // Demo Features
   features: {
-    enableMockData: true,
-    enableRealTransactions: false,
-    enableOracleIntegration: false,
-    enableCrossChain: false,
+    enableMockData: false,
+    enableRealTransactions: true,
+    enableOracleIntegration: true,
+    enableCrossChain: true,
     enableAIRiskAssessment: true,
     enablePremiumCalculator: true
   },
@@ -125,8 +125,7 @@ export const DEMO_CONFIG = {
 export const getDemoConfig = () => DEMO_CONFIG
 
 export const isDemoMode = () => {
-  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true' || 
-         process.env.NODE_ENV === 'development'
+  return process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 }
 
 export const getMockData = () => {

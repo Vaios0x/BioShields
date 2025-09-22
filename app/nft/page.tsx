@@ -15,7 +15,8 @@ import {
   Crown,
   Gift,
   Users,
-  BarChart3
+  BarChart3,
+  DollarSign
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientButton } from '@/components/ui/GradientButton'

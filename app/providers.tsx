@@ -7,25 +7,26 @@ import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { SolanaAdapter } from '@reown/appkit-adapter-solana'
 import { baseSepolia, optimismSepolia, solanaTestnet } from '@reown/appkit/networks'
 import { cookieStorage, createStorage } from 'wagmi'
-import React from 'react'
+import { WalletProvider } from '@solana/wallet-adapter-react'
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
+import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets'
+import { ConnectionProvider } from '@solana/wallet-adapter-react'
+import { clusterApiUrl } from '@solana/web3.js'
+import { Adapter } from '@solana/wallet-adapter-base'
+import React, { useMemo } from 'react'
+
+// CSS will be imported in globals.css to avoid TypeScript issues
 
 // Project ID from Reown Cloud
-const projectId = process.env.NEXT_PUBLIC_PROJECT_ID || 'your-project-id'
+const projectId = process.env.NEXT_PUBLIC_PROJECT_ID || '6c5ea103d2358fc8d91672222874f71b'
 
-if (!projectId) {
-  throw new Error('Project ID is not defined')
+if (!projectId || projectId === 'your-project-id') {
+  console.warn('Project ID is not properly configured. Using fallback.')
 }
 
 // Networks configuration - Testnets only for development
 const networks = [baseSepolia, optimismSepolia] // Base Sepolia y Optimism Sepolia testnets
 const solanaNetworks = [solanaTestnet] // Solana testnet only
-
-// All networks for the modal (including Solana)
-const allNetworks = [
-  baseSepolia,    // Base testnet
-  optimismSepolia, // Optimism testnet
-  solanaTestnet   // Solana testnet
-]
 
 // Wagmi adapter configuration
 const wagmiAdapter = new WagmiAdapter({
@@ -44,7 +45,7 @@ const solanaAdapter = new SolanaAdapter()
 const modal = createAppKit({
   adapters: [wagmiAdapter, solanaAdapter],
   projectId,
-  networks: allNetworks as any,
+  networks: [...networks, ...solanaNetworks] as any,
   metadata: {
     name: 'BioShield Insurance',
     description: 'Decentralized Parametric Insurance for Biotech',
@@ -86,13 +87,31 @@ export function Providers({ children, cookies }: ProvidersProps) {
     initialState = undefined
   }
 
+  // Solana wallet adapters
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter(),
+    ] as Adapter[],
+    []
+  )
+
+  // Solana connection endpoint
+  const endpoint = useMemo(() => clusterApiUrl('testnet'), [])
+
   return (
     <QueryClientProvider client={queryClient}>
       <WagmiProvider 
         config={wagmiAdapter.wagmiConfig} 
         initialState={initialState}
       >
-        {children}
+        <ConnectionProvider endpoint={endpoint}>
+          <WalletProvider wallets={wallets} autoConnect>
+            <WalletModalProvider>
+              {children}
+            </WalletModalProvider>
+          </WalletProvider>
+        </ConnectionProvider>
       </WagmiProvider>
     </QueryClientProvider>
   )

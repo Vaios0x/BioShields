@@ -2,9 +2,9 @@
 // Multi-chain support: Base, Optimism Sepolia, Solana
 
 import { createAppKit } from '@reown/appkit/react'
-import { WagmiProvider } from '@reown/appkit-adapter-wagmi'
-import { SolanaProvider } from '@reown/appkit-adapter-solana'
-import { base, optimismSepolia } from 'wagmi/chains'
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
+import { SolanaAdapter } from '@reown/appkit-adapter-solana'
+import { baseSepolia, optimismSepolia } from 'wagmi/chains'
 import { createConfig, http } from 'wagmi'
 import { solana, solanaDevnet, solanaTestnet } from '@reown/appkit/networks'
 
@@ -13,9 +13,9 @@ const projectId = process.env.NEXT_PUBLIC_PROJECT_ID || 'your-project-id'
 
 // Wagmi configuration for EVM chains
 const wagmiConfig = createConfig({
-  chains: [base, optimismSepolia],
+  chains: [baseSepolia, optimismSepolia],
   transports: {
-    [base.id]: http(),
+    [baseSepolia.id]: http(),
     [optimismSepolia.id]: http(),
   },
 })
@@ -29,13 +29,13 @@ const solanaConfig = {
 // AppKit configuration
 export const appKitConfig = createAppKit({
   adapters: [
-    WagmiProvider({
-      config: wagmiConfig,
+    new WagmiAdapter({
+      networks: [baseSepolia, optimismSepolia],
+      projectId,
     }),
-    SolanaProvider({
-      config: solanaConfig,
-    }),
+    new SolanaAdapter(),
   ],
+  networks: [baseSepolia, optimismSepolia, solana, solanaDevnet, solanaTestnet],
   projectId,
   metadata: {
     name: 'BioShield Insurance',
@@ -46,7 +46,7 @@ export const appKitConfig = createAppKit({
   features: {
     analytics: true,
     email: false,
-    socials: ['twitter', 'discord', 'telegram'],
+    socials: ['discord'],
     emailShowWallets: false,
   },
   themeMode: 'dark',
@@ -56,12 +56,8 @@ export const appKitConfig = createAppKit({
     '--w3m-accent': '#7c3aed',
     '--w3m-border-radius-master': '12px',
   },
-  defaultNetwork: base,
-  enableNetworkSwitching: true,
-  enableAccountView: true,
-  enableExplorer: true,
-  enableOnramp: true,
-  enableWalletFeatures: true,
+  defaultNetwork: baseSepolia,
+  enableNetworkSwitch: true,
 })
 
 export { wagmiConfig, solanaConfig }

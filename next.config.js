@@ -15,6 +15,9 @@ const nextConfig = {
     domains: ['ipfs.io', 'gateway.pinata.cloud'],
   },
   webpack: (config, { isServer }) => {
+    // External packages for Reown AppKit compatibility
+    config.externals.push("pino-pretty", "lokijs", "encoding");
+    
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,

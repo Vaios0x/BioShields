@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useProvider, useSigner, useChainId } from 'wagmi'
+import { useAccount, usePublicClient, useWalletClient, useChainId } from 'wagmi'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { useAppKit } from '@reown/appkit/react'
 import toast from 'react-hot-toast'
+import { detectMetaMask, getMetaMaskErrorMessage, waitForMetaMask } from '@/lib/utils/metamask-detector'
+
+// MetaMask types are handled in the metamask-detector utility
 
 export type NetworkType = 'ethereum' | 'solana'
 
@@ -28,13 +31,35 @@ export function useWeb3Connection() {
 
   // Ethereum hooks
   const { address: ethAddress, isConnected: ethConnected, chain } = useAccount()
-  const { data: provider } = useProvider()
-  const { data: signer } = useSigner()
+  const publicClient = usePublicClient()
+  const { data: walletClient } = useWalletClient()
   const chainId = useChainId()
   
-  // Solana hooks
-  const { connection: solanaConnection } = useConnection()
-  const { publicKey: solanaAddress, connected: solanaConnected, wallet: solanaWallet } = useWallet()
+  // Solana hooks with error handling
+  let solanaConnection: any = null
+  let solanaAddress: any = null
+  let solanaConnected: boolean = false
+  let solanaWallet: any = null
+  
+  try {
+    const connectionResult = useConnection()
+    solanaConnection = connectionResult.connection
+  } catch (error) {
+    console.warn('Solana connection not available:', error)
+    solanaConnection = null
+  }
+  
+  try {
+    const walletResult = useWallet()
+    solanaAddress = walletResult.publicKey
+    solanaConnected = walletResult.connected
+    solanaWallet = walletResult.wallet
+  } catch (error) {
+    console.warn('Solana wallet not available:', error)
+    solanaAddress = null
+    solanaConnected = false
+    solanaWallet = null
+  }
   
   // AppKit hook
   const { open: openAppKit } = useAppKit()
@@ -87,11 +112,33 @@ export function useWeb3Connection() {
     setError(null)
 
     try {
+      // Wait for MetaMask to be available
+      const metaMaskAvailable = await waitForMetaMask(3000)
+      if (!metaMaskAvailable) {
+        throw new Error('MetaMask no está disponible. Por favor instala MetaMask para continuar.')
+      }
+
+      // Detect MetaMask status
+      const metaMaskInfo = await detectMetaMask()
+      if (metaMaskInfo.error) {
+        throw new Error(metaMaskInfo.error)
+      }
+
+      if (!metaMaskInfo.isInstalled) {
+        throw new Error('MetaMask no está instalado. Por favor instala MetaMask para continuar.')
+      }
+
+      if (metaMaskInfo.isLocked) {
+        throw new Error('MetaMask está bloqueado. Por favor desbloquea tu wallet.')
+      }
+
+      // Use AppKit modal for connection
       await openAppKit()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet'
+      const errorMessage = getMetaMaskErrorMessage(err)
       setError(errorMessage)
       toast.error(errorMessage)
+      console.error('Wallet connection error:', err)
     } finally {
       setLoading(false)
     }
@@ -127,8 +174,8 @@ export function useWeb3Connection() {
       currentNetwork,
       address,
       chainId: currentNetwork === 'ethereum' ? chainId : undefined,
-      provider: currentNetwork === 'ethereum' ? provider : undefined,
-      signer: currentNetwork === 'ethereum' ? signer : undefined,
+      provider: currentNetwork === 'ethereum' ? publicClient : undefined,
+      signer: currentNetwork === 'ethereum' ? walletClient : undefined,
       connection: currentNetwork === 'solana' ? solanaConnection : undefined,
       wallet: currentNetwork === 'solana' ? solanaWallet : undefined,
       error,
@@ -141,8 +188,8 @@ export function useWeb3Connection() {
     ethAddress,
     solanaAddress,
     chainId,
-    provider,
-    signer,
+    publicClient,
+    walletClient,
     solanaConnection,
     solanaWallet,
     error,
@@ -182,8 +229,8 @@ export function useWeb3Connection() {
     // Ethereum specific
     ethAddress,
     ethConnected,
-    provider,
-    signer,
+    provider: publicClient,
+    signer: walletClient,
 
     // Solana specific
     solanaAddress,
