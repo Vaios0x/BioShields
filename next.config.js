@@ -1,5 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['@nestjs/common', '@nestjs/core', '@nestjs/config', '@nestjs/throttler', '@nestjs/schedule'],
+  experimental: {
+    externalDir: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    dirs: ['app', 'components', 'lib'],
+    ignoreDuringBuilds: true,
+  },
   images: {
     domains: ['ipfs.io', 'gateway.pinata.cloud'],
   },

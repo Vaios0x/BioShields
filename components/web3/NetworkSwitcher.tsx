@@ -25,10 +25,10 @@ const networks = [
     type: 'ethereum' as const
   },
   { 
-    id: 'ethereum-sepolia', 
-    name: 'Ethereum Sepolia', 
-    chainId: 11155111, 
-    icon: '⚪',
+    id: 'optimism-sepolia', 
+    name: 'Optimism Sepolia', 
+    chainId: 11155420, 
+    icon: '🟠',
     type: 'ethereum' as const
   },
 ]

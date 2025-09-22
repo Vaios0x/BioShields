@@ -1,0 +1,12 @@
+{
+  "network": "base-sepolia",
+  "chainId": 84532,
+  "timestamp": "2025-09-22T05:06:45.806Z",
+  "deployer": "0xe6bE36A435c3BecAd922ddD9Ede2Fc1DbB632BA1",
+  "contracts": {
+    "SimpleBioShield": "0x5C0F9F645E82cFB26918369Feb1189211511250e",
+    "SimpleLivesToken": "0x6C9372Dcc93E4F89a0F58123F26CcA3E71A69279",
+    "SimpleShieldToken": "0xD196B1d67d101E2D6634F5d6F238F7716A8f41AE"
+  },
+  "explorer": "https://sepolia.basescan.org"
+}

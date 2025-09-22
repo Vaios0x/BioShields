@@ -1,24 +1,22 @@
 // Reown AppKit Configuration for BioShield Insurance
-// Multi-chain support: Ethereum, Base, Solana
+// Multi-chain support: Base, Optimism Sepolia, Solana
 
 import { createAppKit } from '@reown/appkit/react'
 import { WagmiProvider } from '@reown/appkit-adapter-wagmi'
 import { SolanaProvider } from '@reown/appkit-adapter-solana'
-import { mainnet, base, arbitrum, polygon } from 'wagmi/chains'
+import { base, optimismSepolia } from 'wagmi/chains'
 import { createConfig, http } from 'wagmi'
 import { solana, solanaDevnet, solanaTestnet } from '@reown/appkit/networks'
 
 // Project ID from Reown Cloud
 const projectId = process.env.NEXT_PUBLIC_PROJECT_ID || 'your-project-id'
 
-// Wagmi configuration for Ethereum chains
+// Wagmi configuration for EVM chains
 const wagmiConfig = createConfig({
-  chains: [mainnet, base, arbitrum, polygon],
+  chains: [base, optimismSepolia],
   transports: {
-    [mainnet.id]: http(),
     [base.id]: http(),
-    [arbitrum.id]: http(),
-    [polygon.id]: http(),
+    [optimismSepolia.id]: http(),
   },
 })
 

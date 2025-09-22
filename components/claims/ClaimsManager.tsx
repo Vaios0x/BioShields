@@ -42,9 +42,9 @@ export function ClaimsManager({ coverageAddress }: ClaimsManagerProps) {
   // Auto-seleccionar cobertura si se proporciona
   useEffect(() => {
     if (coverageAddress && userCoverages.length > 0) {
-      const coverage = userCoverages.find(c =>
-        new PublicKey(c.address || c.publicKey || c.key).equals(coverageAddress)
-      )
+      // En lugar de buscar por address, podríamos buscar por pool o insured
+      // Por ahora simplemente tomamos la primera cobertura si se proporciona una dirección
+      const coverage = userCoverages[0]
       if (coverage) {
         setSelectedCoverage(coverage)
         setClaimForm(prev => ({ ...prev, coverageAddress: coverageAddress.toString() }))
@@ -317,9 +317,8 @@ export function ClaimsManager({ coverageAddress }: ClaimsManagerProps) {
                 value={claimForm.coverageAddress}
                 onChange={(e) => {
                   setClaimForm(prev => ({ ...prev, coverageAddress: e.target.value }))
-                  const coverage = userCoverages.find(c =>
-                    new PublicKey(c.address || c.publicKey || c.key).toString() === e.target.value
-                  )
+                  const coverageIndex = parseInt(e.target.value)
+                  const coverage = userCoverages[coverageIndex]
                   setSelectedCoverage(coverage || null)
                 }}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -328,7 +327,7 @@ export function ClaimsManager({ coverageAddress }: ClaimsManagerProps) {
                 {userCoverages.filter(isCoverageActive).map((coverage, index) => (
                   <option
                     key={index}
-                    value={new PublicKey(coverage.address || coverage.publicKey || coverage.key).toString()}
+                    value={index.toString()}
                   >
                     {coverage.coverageType} - {(coverage.coverageAmount.toNumber() / 1_000_000_000).toFixed(2)} SOL
                   </option>

@@ -5,7 +5,7 @@ import { WagmiProvider, cookieToInitialState } from 'wagmi'
 import { createAppKit } from '@reown/appkit/react'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { SolanaAdapter } from '@reown/appkit-adapter-solana'
-import { sepolia, baseSepolia, solanaTestnet } from '@reown/appkit/networks'
+import { baseSepolia, optimismSepolia, solanaTestnet } from '@reown/appkit/networks'
 import { cookieStorage, createStorage } from 'wagmi'
 import React from 'react'
 
@@ -17,14 +17,14 @@ if (!projectId) {
 }
 
 // Networks configuration - Testnets only for development
-const networks = [sepolia, baseSepolia] // Ethereum Sepolia y Base Sepolia testnets
+const networks = [baseSepolia, optimismSepolia] // Base Sepolia y Optimism Sepolia testnets
 const solanaNetworks = [solanaTestnet] // Solana testnet only
 
 // All networks for the modal (including Solana)
 const allNetworks = [
-  sepolia,     // Ethereum testnet
-  baseSepolia, // Base testnet
-  solanaTestnet // Solana testnet
+  baseSepolia,    // Base testnet
+  optimismSepolia, // Optimism testnet
+  solanaTestnet   // Solana testnet
 ]
 
 // Wagmi adapter configuration

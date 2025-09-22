@@ -1,15 +1,21 @@
 {
-  "name": "bioshield-insurance",
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "outputDirectory": ".next",
   "env": {
-    "NEXT_PUBLIC_SOLANA_RPC": "https://api.testnet.solana.com",
+    "NEXT_PUBLIC_SOLANA_RPC": "https://api.devnet.solana.com",
     "NEXT_PUBLIC_BASE_RPC": "https://sepolia.base.org",
-    "NEXT_PUBLIC_PROGRAM_ID": "BioSh1eLdInsur4nc3Pr0gr4mIDxxxxxxxxxxxxxx",
-    "NEXT_PUBLIC_INSURANCE_POOL": "InsurancePoolAddressHere",
+    "NEXT_PUBLIC_OPTIMISM_RPC": "https://sepolia.optimism.io",
+    "NEXT_PUBLIC_BASE_BIOSHIELD": "0x5C0F9F645E82cFB26918369Feb1189211511250e",
+    "NEXT_PUBLIC_BASE_LIVES_TOKEN": "0x6C9372Dcc93E4F89a0F58123F26CcA3E71A69279",
+    "NEXT_PUBLIC_BASE_SHIELD_TOKEN": "0xD196B1d67d101E2D6634F5d6F238F7716A8f41AE",
+    "NEXT_PUBLIC_OPTIMISM_BIOSHIELD": "0x0E98bc946F105e0371AD6D338d6814A4fcBBaC27",
+    "NEXT_PUBLIC_OPTIMISM_LIVES_TOKEN": "0x7a157A006F86Ea2770Ba66285AE5e9A18f949AB2",
+    "NEXT_PUBLIC_OPTIMISM_SHIELD_TOKEN": "0x15164c7C1E5ced9788c2fB82424fe595950ee261",
+    "NEXT_PUBLIC_PROGRAM_ID": "3WhatnqPNSgXezguJtdugmz5N4LcxzDdbnxrSfpqYu6w",
+    "NEXT_PUBLIC_INSURANCE_POOL": "f4JazRkQP7HGuvbF2EDPBIEPqTpUrLBLa0/+bncxqwo=",
     "NEXT_PUBLIC_LIVES_TOKEN": "DoMbjPNnfThWx89KoX4XrsqPyKuoYSxHf91otU3KnzUz",
     "NEXT_PUBLIC_SHIELD_TOKEN": "6ESbK51EppXAvQu5GtyWd9m7jqForjPm8F4fGQrLyKqP",
     "NEXT_PUBLIC_PROJECT_ID": "6c5ea103d2358fc8d91672222874f71b",
@@ -41,5 +47,10 @@
       "destination": "/",
       "permanent": true
     }
-  ]
+  ],
+  "functions": {
+    "app/**": {
+      "excludeFiles": "backend/**"
+    }
+  }
 }

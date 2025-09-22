@@ -1,0 +1,12 @@
+{
+  "network": "optimism-sepolia",
+  "chainId": 11155420,
+  "timestamp": "2025-09-22T05:03:17.632Z",
+  "deployer": "0x9EA237c51e63EfF7B03665A4e147878b52F730eC",
+  "contracts": {
+    "SimpleBioShield": "0x0E98bc946F105e0371AD6D338d6814A4fcBBaC27",
+    "SimpleLivesToken": "0x7a157A006F86Ea2770Ba66285AE5e9A18f949AB2",
+    "SimpleShieldToken": "0x15164c7C1E5ced9788c2fB82424fe595950ee261"
+  },
+  "explorer": "https://sepolia-optimism.etherscan.io"
+}

@@ -9,7 +9,7 @@ import { GlassCard } from '@/components/ui/GlassCard'
 import { GradientButton } from '@/components/ui/GradientButton'
 import {
   Shield, TrendingUp, DollarSign, Users, Activity, Clock,
-  AlertTriangle, CheckCircle, BarChart3, PieChart, ArrowUp,
+  AlertTriangle, CheckCircle, BarChart3, PieChart,
   ArrowDown, Zap, Award, Target
 } from 'lucide-react'
 import { LineChart, Line, AreaChart, Area, PieChart as RechartsPieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -95,7 +95,7 @@ export function ComprehensiveDashboard() {
               </div>
               <div className="text-sm text-text-secondary">Total Value Locked</div>
               <div className={`flex items-center text-xs mt-1 ${tvlChange.positive ? 'text-green-500' : 'text-red-500'}`}>
-                {tvlChange.positive ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
+                {tvlChange.positive ? <TrendingUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
                 {tvlChange.value.toFixed(1)}% vs last period
               </div>
             </div>
@@ -113,7 +113,7 @@ export function ComprehensiveDashboard() {
               </div>
               <div className="text-sm text-text-secondary">Active Policies</div>
               <div className="flex items-center text-xs mt-1 text-green-500">
-                <ArrowUp className="w-3 h-3 mr-1" />
+                <TrendingUp className="w-3 h-3 mr-1" />
                 12.5% growth
               </div>
             </div>
@@ -131,7 +131,7 @@ export function ComprehensiveDashboard() {
               </div>
               <div className="text-sm text-text-secondary">Average APY</div>
               <div className={`flex items-center text-xs mt-1 ${apyChange.positive ? 'text-green-500' : 'text-red-500'}`}>
-                {apyChange.positive ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
+                {apyChange.positive ? <TrendingUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
                 {apyChange.value.toFixed(1)}% change
               </div>
             </div>
@@ -149,7 +149,7 @@ export function ComprehensiveDashboard() {
               </div>
               <div className="text-sm text-text-secondary">Claims Processed</div>
               <div className={`flex items-center text-xs mt-1 ${claimsChange.positive ? 'text-green-500' : 'text-red-500'}`}>
-                {claimsChange.positive ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
+                {claimsChange.positive ? <TrendingUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
                 {claimsChange.value.toFixed(1)}% change
               </div>
             </div>
